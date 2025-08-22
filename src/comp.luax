@@ -1,0 +1,12 @@
+
+function Litteral()
+    local _var = "Hello world"
+    return (<div>{_var}</div>)
+end
+
+
+
+
+
+
+
