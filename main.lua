@@ -29,21 +29,6 @@ end
 uv.run()
 
 
-
-
--- local luax_path = "component.luax"
--- local target_file = luax_path:sub(1, #luax_path - 1) -- component.lua
--- local content = read_src(luax_path)
---
--- print(content)
---
--- local transformed = transpile_src(content)
-
-
---
--- write_to_build(target_file, content)
-
-
 --#region components
 -- function Loop()
 --     local _var = {"Hello", "world"}
