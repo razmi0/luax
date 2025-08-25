@@ -101,3 +101,6 @@ lpeg.match(balanced_paren, "((a)b(c))") -- Succeeds
 |lpeg.patterns.upper|lpeg.R("AZ")|
 |lpeg.patterns.xdigit|lpeg.R("09", "af", "AF")|
 |lpeg.patterns.eof|lpeg.P(-1)|
+
+```lua
+
