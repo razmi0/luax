@@ -1,150 +1,130 @@
 --
-local uv = require("luv") -- hyperfine : lib uv > lfs
-local fs = require("lib.fs").new(uv)
-local lpeg = require("lpeg")
-local inspect = require("inspect")
-local P, R, S, V, C, Ct, Cg = lpeg.P, lpeg.R, lpeg.S, lpeg.V, lpeg.C, lpeg.Ct, lpeg.Cg
+local uv                   = require("luv") -- hyperfine : libUv > lib lfs
+local fs                   = require("lib.fs").new(uv)
+local lpeg                 = require("lpeg")
+local inspect              = require("inspect")
 --
-local SRC_PATH = "src"
-local BUILD_PATH = "build"
-local TRANSPILED_FILE_EXTENSION = ".luax"
+local SRC_PATH             = "src"
+local BUILD_PATH           = "build"
+local LUAX_FILE_EXTENSION  = ".luax"
+local HYPERSCRIPT_PREAMBLE = "local h = require(\"lib.hyperscript\")\n"
 --
-local function transpile(content)
-    local space     = S(" \t\r\n") ^ 0
-    local name      = R("az", "AZ", "09") ^ 1
-    local lua_chunk = Ct((V("LuaChunk") + V("Element")) ^ 0)
+local P, R, S, V, C, Ct    = lpeg.P, lpeg.R, lpeg.S, lpeg.V, lpeg.C, lpeg.Ct
+local NAME                 = R("az", "AZ", "09") ^ 1
+local ATTRIBUTES           = (R("az", "AZ", "09") + S("-")) ^ 1
+local GRAMMAR              = P {
+    "Chunk",
 
-    local G         = P {
-        "Chunk",
+    Chunk    = Ct((V("LuaChunk") + V("Element")) ^ 0),
 
-        Chunk    = lua_chunk,
-
-        LuaChunk = C((1 - P("<")) ^ 1) / function(code)
+    LuaChunk = C((1 - P("<")) ^ 1)
+        / function(code)
             return { lua = code }
         end,
 
-        Element  = P("<") * C(name) * P(">")
+    Attr     = (
+            P(" ") * C(ATTRIBUTES) * P("=") * P("\"") * C((1 - P("\"")) ^ 0) * P("\"")
+            / function(key, value)
+                return { [key] = { kind = "string", value = value } }
+            end
+        )
+        +
+        (
+            P(" ") * C(ATTRIBUTES) * P("=") * P("{") * C((1 - P("}")) ^ 1) * P("}")
+            / function(key, expr)
+                return { [key] = { kind = "expr", value = expr } }
+            end
+        ),
+
+    Element  = (P("<") * C(NAME) * Ct(V("Attr") ^ 0) * P(">")
             * Ct((V("Element") + V("Expr") + V("Text")) ^ 0)
             * P("</") * V("CloseTag") * P(">")
-            / function(tag, children, close)
-                assert(tag == close, "mismatched " .. tag .. "/" .. close)
-                return { tag = tag, children = children }
-            end,
+            / function(open_tag, attrs, children, close_tag)
+                assert(open_tag == close_tag, "mismatched " .. open_tag .. "/" .. close_tag)
+                return { tag = open_tag, children = children, attrs = attrs }
+            end)
+        +
+        (P("<") * C(NAME) * Ct(V("Attr") ^ 0) * P("/>")
+            / function(tag, attrs)
+                return { tag = tag, children = {}, attrs = attrs }
+            end),
 
-        CloseTag = C(name),
+    CloseTag = C(NAME),
 
-        Expr     = P("{") * C((1 - P("}")) ^ 1) * P("}")
-            / function(e) return { expr = e } end,
+    Expr     = P("{") * C((1 - P("}")) ^ 1) * P("}")
+        / function(e) return { expr = e } end,
 
-        Text     = C((1 - S("<{")) ^ 1)
-            / function(t) return { text = t } end,
-    }
+    Text     = C((1 - S("<{")) ^ 1)
+        / function(t) return { text = t } end,
+}
+--
 
-    local ast       = lpeg.match(G, content)
-    -- element: h("tag", {}, { children })
-    local function explore(node)
-        if node.tag then
-            local children = {}
-            for _, child in ipairs(node.children or {}) do
-                children[#children + 1] = explore(child)
-            end
-            return string.format('h("%s", {}, { %s })', node.tag, table.concat(children, ", "))
-        elseif node.text then
-            local txt = node.text:gsub("[ \n]", "")
-            return string.format("%q", txt)
-        elseif node.expr then
-            return node.expr
-        elseif node.lua then
-            return node.lua
+local function emit_hyperscript(node)
+    -- element: h("tag", {...props...}, { ...children... })
+    local function emit_children(nodes)
+        local children = {}
+        for _, child in ipairs(nodes or {}) do
+            children[#children + 1] = emit_hyperscript(child)
         end
+        return #children > 0 and "{ " .. table.concat(children, ", ") .. " }" or "{}"
     end
 
-    local out = {}
+    local function emit_props(attrs)
+        if not attrs or #attrs == 0 then
+            return "{}"
+        end
+
+        local parts = {}
+        for _, attr in ipairs(attrs) do
+            for k, v in pairs(attr) do
+                if k:match("-") then
+                    k = string.format("[%q]", k)
+                end
+                if v.kind == "string" then
+                    parts[#parts + 1] = string.format('%s = %q', k, v.value)
+                elseif v.kind == "expr" then
+                    parts[#parts + 1] = string.format('%s = %s', k, v.value)
+                end
+            end
+        end
+        return "{ " .. table.concat(parts, ", ") .. " }"
+    end
+
+    if node.tag then
+        return string.format('h("%s", %s, %s)', node.tag, emit_props(node.attrs), emit_children(node.children))
+    elseif node.text then
+        local txt = node.text:gsub("[ \n\t\b]", "")
+        return string.format("%q", txt)
+    elseif node.expr then
+        return node.expr
+    elseif node.lua then
+        return node.lua
+    end
+end
+
+local function transpile(content)
+    local ast = lpeg.match(GRAMMAR, content)
+    local out = { HYPERSCRIPT_PREAMBLE }
     for _, node in ipairs(ast) do
-        out[#out + 1] = explore(node)
+        out[#out + 1] = emit_hyperscript(node)
     end
-
-    -- print(inspect(out))
-    print(inspect(out))
     return out
 end
+
+--
 --
 if not fs:has_subdir(SRC_PATH) then return end
 fs:create_dir(BUILD_PATH)
 local files = fs:list_files(SRC_PATH)
-
 for _, file in ipairs(files) do
-    if file:sub(-5) == TRANSPILED_FILE_EXTENSION then
+    if file:sub(-5) == LUAX_FILE_EXTENSION then
         local content = fs:read(SRC_PATH .. "/" .. file)
         local target_file_name = file:sub(1, #file - 1)
         local transpiled = transpile(content)
+        print(inspect(transpiled))
         fs:write(BUILD_PATH .. "/" .. target_file_name, transpiled)
     end
 end
-
-
+--
+--
 uv.run()
-
--- h(tag,props,children)
-
-
--- {
---     {
---         lua = '\nfunction Litteral()\n    local _var = "Hello world"\n    local _var2 = " world"\n    return (\n        '
---     },
---     {
---         tag = "div",
---         children = {
---             {
---                 expr = "_var .. _var2"
---             },
---             {
---                 text = "\n            "
---             },
---             {
---                 children = { {
---                     text = "HOhohO "
---                 },
---                     {
---                         expr = "_var2"
---                     }
---                 },
---                 tag = "div"
---             },
---             {
---                 text = "\n        "
---             }
---         },
---     },
---     {
---         lua = "\n        )\nend\n\n\n\n\n\n\n\n"
---     }
--- }
-
-
---#region components
--- function Loop()
---     local _var = {"Hello", "world"}
---     return (
---         <div>{_var.ipairs(function(i,w)
---             return <div>{w}</div>
---          end)}
---         </div>
---     )
--- end
-
--- function Parent(props)
---     return (
---         <div>{props.children}</div>
---     )
--- end
-
--- function Composed()
---     return (
---         <Parent>
---             <Litteral />
---             <Loop />
---         </Parent>
---     )
--- end
---#endregion
