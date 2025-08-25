@@ -12,6 +12,7 @@ local HYPERSCRIPT_PREAMBLE = "local h = require(\"lib.hyperscript\")\n"
 local P, R, S, V, C, Ct    = lpeg.P, lpeg.R, lpeg.S, lpeg.V, lpeg.C, lpeg.Ct
 local NAME                 = R("az", "AZ", "09") ^ 1
 local ATTRIBUTES           = (R("az", "AZ", "09") + S("-")) ^ 1
+local SPACING              = S(" \t\r\n\f") ^ 0
 local GRAMMAR              = P {
     "Chunk",
 
@@ -23,28 +24,29 @@ local GRAMMAR              = P {
         end,
 
     Attr     = (
-            P(" ") * C(ATTRIBUTES) * P("=") * P("\"") * C((1 - P("\"")) ^ 0) * P("\"")
+            SPACING * C(ATTRIBUTES) * SPACING * P("=") * SPACING * P("\"") * C((1 - P("\"")) ^ 0) * P("\"")
             / function(key, value)
                 return { [key] = { kind = "string", value = value } }
             end
         )
         +
         (
-            P(" ") * C(ATTRIBUTES) * P("=") * P("{") * C((1 - P("}")) ^ 1) * P("}")
+            SPACING * C(ATTRIBUTES) * SPACING * P("=") * SPACING * P("{") * SPACING * C((1 - P("}")) ^ 1) * SPACING * P("}")
             / function(key, expr)
                 return { [key] = { kind = "expr", value = expr } }
             end
         ),
 
-    Element  = (P("<") * C(NAME) * Ct(V("Attr") ^ 0) * P(">")
+    Element  = (P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P(">")
             * Ct((V("Element") + V("Expr") + V("Text")) ^ 0)
-            * P("</") * V("CloseTag") * P(">")
+            * P("</") * SPACING * V("CloseTag") * SPACING * P(">")
             / function(open_tag, attrs, children, close_tag)
                 assert(open_tag == close_tag, "mismatched " .. open_tag .. "/" .. close_tag)
                 return { tag = open_tag, children = children, attrs = attrs }
             end)
         +
-        (P("<") * C(NAME) * Ct(V("Attr") ^ 0) * P("/>")
+        -- self-closing tags
+        (P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P("/>")
             / function(tag, attrs)
                 return { tag = tag, children = {}, attrs = attrs }
             end),
@@ -68,7 +70,6 @@ local function emit_hyperscript(node)
         end
         return #children > 0 and "{ " .. table.concat(children, ", ") .. " }" or "{}"
     end
-
     local function emit_props(attrs)
         if not attrs or #attrs == 0 then
             return "{}"
@@ -77,9 +78,7 @@ local function emit_hyperscript(node)
         local parts = {}
         for _, attr in ipairs(attrs) do
             for k, v in pairs(attr) do
-                if k:match("-") then
-                    k = string.format("[%q]", k)
-                end
+                if k:match("-") then k = string.format("[%q]", k) end
                 if v.kind == "string" then
                     parts[#parts + 1] = string.format('%s = %q', k, v.value)
                 elseif v.kind == "expr" then
@@ -89,7 +88,6 @@ local function emit_hyperscript(node)
         end
         return "{ " .. table.concat(parts, ", ") .. " }"
     end
-
     if node.tag then
         return string.format('h("%s", %s, %s)', node.tag, emit_props(node.attrs), emit_children(node.children))
     elseif node.text then
@@ -104,11 +102,11 @@ end
 
 local function transpile(content)
     local ast = lpeg.match(GRAMMAR, content)
-    local out = { HYPERSCRIPT_PREAMBLE }
+    local emitted = { HYPERSCRIPT_PREAMBLE }
     for _, node in ipairs(ast) do
-        out[#out + 1] = emit_hyperscript(node)
+        emitted[#emitted + 1] = emit_hyperscript(node)
     end
-    return out
+    return emitted
 end
 
 --
