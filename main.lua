@@ -16,48 +16,92 @@ local SPACING              = S(" \t\r\n\f") ^ 0
 local GRAMMAR              = P {
     "Chunk",
 
-    Chunk    = Ct((V("LuaChunk") + V("Element")) ^ 0),
+    Chunk = Ct((V("LuaChunk") + V("Element")) ^ 0),
 
-    LuaChunk = C((1 - P("<")) ^ 1)
-        / function(code)
-            return { lua = code }
+    LuaChunk = C((1 - P("<")) ^ 1) /
+        function(code)
+            return {
+                lua = code
+            }
         end,
 
-    Attr     = (
-            SPACING * C(ATTRIBUTES) * SPACING * P("=") * SPACING * P("\"") * C((1 - P("\"")) ^ 0) * P("\"")
-            / function(key, value)
-                return { [key] = { kind = "string", value = value } }
+    Attr =
+        ( -- string values
+            SPACING * C(ATTRIBUTES) * SPACING * P("=") *
+            SPACING * P("\"") * C((1 - P("\"")) ^ 0) * P("\"") /
+            function(key, value)
+                return {
+                    [key] = {
+                        kind = "string",
+                        value = value
+                    }
+                }
             end
         )
         +
-        (
-            SPACING * C(ATTRIBUTES) * SPACING * P("=") * SPACING * P("{") * SPACING * C((1 - P("}")) ^ 1) * SPACING * P("}")
-            / function(key, expr)
-                return { [key] = { kind = "expr", value = expr } }
+        ( -- expressions values
+            SPACING * C(ATTRIBUTES) * SPACING * P("=") *
+            SPACING * P("{") * SPACING * C((1 - P("}")) ^ 1) * SPACING * P("}") /
+            function(key, expr)
+                return {
+                    [key] = {
+                        kind = "expr",
+                        value = expr
+                    }
+                }
+            end
+        )
+        +
+        ( -- boolean values
+            SPACING * C(ATTRIBUTES) /
+            function(value)
+                return {
+                    [value] = {
+                        kind = "bool"
+                    }
+                }
             end
         ),
 
-    Element  = (P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P(">")
-            * Ct((V("Element") + V("Expr") + V("Text")) ^ 0)
-            * P("</") * SPACING * V("CloseTag") * SPACING * P(">")
-            / function(open_tag, attrs, children, close_tag)
+    Element =
+        ( -- regular tags
+            P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P(">") *
+            Ct((V("Element") + V("Expr") + V("Text")) ^ 0) *
+            P("</") * SPACING * V("CloseTag") * SPACING * P(">") /
+            function(open_tag, attrs, children, close_tag)
                 assert(open_tag == close_tag, "mismatched " .. open_tag .. "/" .. close_tag)
-                return { tag = open_tag, children = children, attrs = attrs }
-            end)
+                return {
+                    tag = open_tag,
+                    children = children,
+                    attrs = attrs
+                }
+            end
+        )
         +
-        -- self-closing tags
-        (P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P("/>")
-            / function(tag, attrs)
-                return { tag = tag, children = {}, attrs = attrs }
-            end),
+        ( -- self-closing tags
+            P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P("/>") /
+            function(tag, attrs)
+                return {
+                    tag = tag,
+                    children = {},
+                    attrs = attrs
+                }
+            end
+        ),
 
     CloseTag = C(NAME),
 
-    Expr     = P("{") * C((1 - P("}")) ^ 1) * P("}")
-        / function(e) return { expr = e } end,
+    Expr = P("{") * C((1 - P("}")) ^ 1) * P("}") / function(e)
+        return {
+            expr = e
+        }
+    end,
 
-    Text     = C((1 - S("<{")) ^ 1)
-        / function(t) return { text = t } end,
+    Text = C((1 - S("<{")) ^ 1) / function(t)
+        return {
+            text = t
+        }
+    end
 }
 --
 
@@ -70,6 +114,7 @@ local function emit_hyperscript(node)
         end
         return #children > 0 and "{ " .. table.concat(children, ", ") .. " }" or "{}"
     end
+
     local function emit_props(attrs)
         if not attrs or #attrs == 0 then
             return "{}"
@@ -78,16 +123,21 @@ local function emit_hyperscript(node)
         local parts = {}
         for _, attr in ipairs(attrs) do
             for k, v in pairs(attr) do
-                if k:match("-") then k = string.format("[%q]", k) end
+                if k:match("-") then
+                    k = string.format("[%q]", k)
+                end
                 if v.kind == "string" then
                     parts[#parts + 1] = string.format('%s = %q', k, v.value)
                 elseif v.kind == "expr" then
                     parts[#parts + 1] = string.format('%s = %s', k, v.value)
+                elseif v.kind == "bool" then
+                    parts[#parts + 1] = string.format('%q', k)
                 end
             end
         end
         return "{ " .. table.concat(parts, ", ") .. " }"
     end
+
     if node.tag then
         return string.format('h("%s", %s, %s)', node.tag, emit_props(node.attrs), emit_children(node.children))
     elseif node.text then
@@ -100,15 +150,6 @@ local function emit_hyperscript(node)
     end
 end
 
-local function transpile(content)
-    local ast = lpeg.match(GRAMMAR, content)
-    local emitted = { HYPERSCRIPT_PREAMBLE }
-    for _, node in ipairs(ast) do
-        emitted[#emitted + 1] = emit_hyperscript(node)
-    end
-    return emitted
-end
-
 --
 --
 if not fs:has_subdir(SRC_PATH) then return end
@@ -118,9 +159,13 @@ for _, file in ipairs(files) do
     if file:sub(-5) == LUAX_FILE_EXTENSION then
         local content = fs:read(SRC_PATH .. "/" .. file)
         local target_file_name = file:sub(1, #file - 1)
-        local transpiled = transpile(content)
-        print(inspect(transpiled))
-        fs:write(BUILD_PATH .. "/" .. target_file_name, transpiled)
+        local ast = lpeg.match(GRAMMAR, content)
+        local emitted = { HYPERSCRIPT_PREAMBLE }
+        for _, node in ipairs(ast) do
+            emitted[#emitted + 1] = emit_hyperscript(node)
+        end
+        print(inspect(emitted))
+        fs:write(BUILD_PATH .. "/" .. target_file_name, emitted)
     end
 end
 --
