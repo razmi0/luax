@@ -67,4 +67,9 @@ function Fs:write(path, content)
     assert(self.uv.fs_close(fd))
 end
 
+function Fs:find_in(path, string)
+    local content = self:read(path)
+    if content:match(string) then return true end
+end
+
 return Fs
