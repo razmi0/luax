@@ -8,10 +8,13 @@ local uv, inspect = require("luv"), require("inspect")
 ---@field exec string The command to execute when a change is detected <runtime> <executed_file>.
 ---@field recursive boolean|nil Whether to monitor subdirectories recursively.
 ---@field ignore string[]|nil A list of files that can be ignored.
+---@field verbose boolean|nil Clear or not the terminal before refreshing stuff.
 
 local function log_error(field)
     error(field .. " not provided. Provide " .. field .. " = '<runtime> <executed_file>'")
 end
+
+local function log(str) print("\x1b[90m" .. str .. "\x1b[0m") end
 
 local Watch = {}
 Watch.__index = Watch
@@ -29,7 +32,8 @@ function Watch.new(config)
         recursive = config and config.recursive or false,
         runtime = runtime,
         executed_file = executed_file,
-        ignore_file_list = config and config.ignore or {}
+        ignore_file_list = config and config.ignore or {},
+        verbose = config and config.verbose or false
     }, Watch)
 end
 
@@ -45,8 +49,12 @@ function Watch:on(event, cb)
     return self
 end
 
-local function log(str) print("\x1b[90m" .. str .. "\x1b[0m") end
-local function clear() log '\x1b[2J\x1b[H' end
+function Watch:clear()
+    if not self.verbose then
+        log '\x1b[2J\x1b[H'
+    end
+end
+
 function Watch:_spawn(err, filename)
     assert(not err, "\x1b[31mUnexpected Error\x1b[0m \n" .. inspect(self))
 
@@ -59,7 +67,7 @@ function Watch:_spawn(err, filename)
     end
 
     kill()
-    clear()
+    self:clear()
 
     self.counter = self.counter + 1
     log(
@@ -102,11 +110,9 @@ function Watch:run()
     -- stopping gracefully
     local signal = uv.new_signal()
     uv.signal_start(signal, "sigint", function(signame)
-        clear()
+        self:clear()
         os.exit(1)
     end)
-
-
 
     -- watcher
     for i = 1, #self.paths, 1 do

@@ -1,0 +1,37 @@
+---@transpile luax
+local Nav = {}
+function Nav.NavItem(props)
+    return (
+        <li>
+            <a href={props.href} class="px-4 py-2 hover:bg-gray-200">
+                {props.children}
+            </a>
+        </li>
+    )
+end
+
+function Nav.NavLinks(props)
+    return (
+        <ul class="flex space-x-4">
+            {props.children}
+        </ul>
+    )
+end
+
+function Nav.NavbarBrand(props)
+    return (
+        <div class="font-bold text-xl">
+            {props.children}
+        </div>
+    )
+end
+
+function Nav.NavbarContainer(props)
+    return (
+        <nav class="flex items-center justify-between p-4 bg-gray-100">
+            {props.children}
+        </nav>
+    )
+end
+
+return Nav

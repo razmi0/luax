@@ -1,0 +1,23 @@
+---@transpile luax
+local Nav = require("build.Nav")
+local NavbarContainer = Nav.NavbarContainer
+local NavbarBrand = Nav.NavbarBrand
+local NavLinks = Nav.NavLinks
+local NavItem = Nav.NavItem
+
+local items = {"LOBBY", "About", "Services", "Contact"}
+
+function App()
+    return (
+        <NavbarContainer>
+            <NavbarBrand>Not my site</NavbarBrand>
+            <NavLinks>
+               WHY
+            </NavLinks>
+        </NavbarContainer>
+    )
+end
+
+
+
+return App
