@@ -15,25 +15,25 @@ transpile(uv, {
     H_PREAMBLE                  = "local " .. RENDER_FUNCTION_NAME .. " = require(\"lib.luax.transpiler.luax\")\n",
     --
     LUAX_MAP_HELPER_PREAMBLE    = [[
-                                local function map(tbl, func)
-                                    local newTbl = {}
-                                    for i, v in ipairs(tbl) do
-                                        table.insert(newTbl, func(v, i, tbl))
-                                    end
-                                    return table.concat(newTbl)
-                                end
-                                ]],
+local function map(tbl, func)
+    local newTbl = {}
+    for i, v in ipairs(tbl) do
+        table.insert(newTbl, func(v, i, tbl))
+    end
+    return table.concat(newTbl)
+end
+]],
     LUAX_FILTER_HELPER_PREAMBLE = [[
-                                local function filter(tbl, func)
-                                    local newTbl = {}
-                                    for i, v in ipairs(tbl) do
-                                        if func(v, i, tbl) then
-                                        table.insert(newTbl, v)
-                                        end
-                                    end
-                                    return table.concat(newTbl)
-                                end
-                                ]]
+local function filter(tbl, func)
+    local newTbl = {}
+    for i, v in ipairs(tbl) do
+        if func(v, i, tbl) then
+        table.insert(newTbl, v)
+        end
+    end
+    return table.concat(newTbl)
+end
+]]
 })
 
 to_ssg({

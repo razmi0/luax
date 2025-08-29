@@ -5,7 +5,7 @@ local NavbarBrand = Nav.NavbarBrand
 local NavLinks = Nav.NavLinks
 local NavItem = Nav.NavItem
 
-local items = {<span>Lobby</span>, <span>1</span>, <span>2</span>, <span>3</span>, <span>4</span>}
+local items = {<span>Lobby</span>, <span>Zerty</span>, <span>2</span>, <span>3</span>, <span>4</span>}
 
 function App()
     return (
