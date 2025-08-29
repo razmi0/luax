@@ -1,19 +1,24 @@
 ---@transpile luax
 local Nav = require("build.Nav")
-local NavbarContainer = Nav.NavbarContainer
-local NavbarBrand = Nav.NavbarBrand
-local NavLinks = Nav.NavLinks
-local NavItem = Nav.NavItem
 
-local items = {<span>Lobby</span>, <span>Zerty</span>, <span>2</span>, <span>3</span>, <span>4</span>}
+local items = {
+    <span>Link 1</span>,
+     <span>Link 2</span>,
+     <span>Link 3</span>,
+     <span>Link 3</span>,
+     <span>Link 4</span>
+}
 
 function App()
     return (
-        <div>
-            {map(items, function(item)
-                return <NavItem>{item}</NavItem>
-            end)}
-        </div>
+        <Nav.NavbarContainer>
+            <Nav.NavbarBrand>Navbar123</Nav.NavbarBrand>
+            <Nav.NavLinks>
+                {map(items, function(item)
+                    return <Nav.NavItem>{item}</Nav.NavItem>
+                end)}
+            </Nav.NavLinks>
+        </Nav.NavbarContainer>
     )
 end
 
