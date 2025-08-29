@@ -1,8 +1,7 @@
---> luax -> hyperscript --> index.html
 local lpeg              = require("lpeg")
 --
 local P, R, S, V, C, Ct = lpeg.P, lpeg.R, lpeg.S, lpeg.V, lpeg.C, lpeg.Ct
-local NAME              = R("az", "AZ", "09") ^ 1
+local NAME              = (R("az", "AZ", "09") + S(".")) ^ 1
 local ATTRIBUTES        = (R("az", "AZ", "09") + S("-")) ^ 1
 local SPACING           = S(" \t\r\n\f") ^ 0
 --> Chunk --> Luachunk --> Element --> Element or Exprchunk
