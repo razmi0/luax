@@ -1,4 +1,3 @@
----@transpile luax
 local Nav = require("build.Nav")
 
 local items = {
@@ -6,13 +5,14 @@ local items = {
      <span>Link 2</span>,
      <span>Link 3</span>,
      <span>Link 3</span>,
-     <span>Link 4</span>
+     <span>Link 3</span>,
+     <span>Link 3</span>,
 }
 
 function App()
     return (
         <Nav.NavbarContainer>
-            <Nav.NavbarBrand>Navbar123</Nav.NavbarBrand>
+            <Nav.NavbarBrand>Navbar123456</Nav.NavbarBrand>
             <Nav.NavLinks>
                 {map(items, function(item)
                     return <Nav.NavItem>{item}</Nav.NavItem>

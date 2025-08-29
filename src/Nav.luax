@@ -1,4 +1,3 @@
----@transpile luax
 local Nav = {}
 function Nav.NavItem(props)
     return (
