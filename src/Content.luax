@@ -1,0 +1,11 @@
+
+
+function Content(props)
+return (
+    <main>
+      {props.children}
+    </main>
+  );
+end
+
+return Content
