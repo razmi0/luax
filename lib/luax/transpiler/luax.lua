@@ -1,3 +1,4 @@
+--> luax -> hyperscript --> index.html
 local function Luax(tag, props, children)
     if type(tag) == "string" then
         local acc = ""
@@ -13,7 +14,7 @@ local function Luax(tag, props, children)
                 for _, c in ipairs(child) do
                     if type(c) == "function" then
                         acc = acc .. c()
-                    else
+                    elseif type(c) ~= "boolean" then
                         acc = acc .. c
                     end
                 end

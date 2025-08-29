@@ -5,19 +5,20 @@ local NavbarBrand = Nav.NavbarBrand
 local NavLinks = Nav.NavLinks
 local NavItem = Nav.NavItem
 
-local items = {"LOBBY", "About", "Services", "Contact"}
+local items = {<span>Lobby</span>, <span>1</span>, <span>2</span>, <span>3</span>, <span>4</span>}
 
 function App()
     return (
         <NavbarContainer>
-            <NavbarBrand>Not my site</NavbarBrand>
+            <NavbarBrand>Not my site but is my site i said</NavbarBrand>
             <NavLinks>
-               WHY
+            {map(items, function(item)
+                return <NavItem>{item}</NavItem>
+            end)}
             </NavLinks>
         </NavbarContainer>
     )
 end
-
 
 
 return App

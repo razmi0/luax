@@ -25,8 +25,8 @@ end
 
 ---@param config ToSSGConfig
 local function to_ssg(config)
-    local render_function = require(config.entry_path)
-    local page = renderer(render_function)
+    local luax_app = require(config.entry_path) -- App
+    local page = renderer(luax_app)
     fs:write(config.out_path or "index.html", page)
     uv.run("once")
 end

@@ -1,6 +1,7 @@
-local Fs    = require("lib.luax.utils.fs")
-local parse = require("lib.luax.transpiler.parser_ast")
-local emit  = require("lib.luax.transpiler.code_gen")
+local Fs      = require("lib.luax.utils.fs")
+local parse   = require("lib.luax.transpiler.parser_ast")
+local emit    = require("lib.luax.transpiler.code_gen")
+local inspect = require("inspect")
 
 ---@class TranspilerConfig
 ---@field SRC_PATH string
@@ -9,7 +10,10 @@ local emit  = require("lib.luax.transpiler.code_gen")
 ---@field H_PRAGMA string
 ---@field H_PREAMBLE string
 ---@field RENDER_FUNCTION_NAME string
+---@field LUAX_MAP_HELPER_PREAMBLE string
+---@field LUAX_FILTER_HELPER_PREAMBLE string
 
+--> luax -> hyperscript --> index.html
 ---@param config TranspilerConfig
 local function transpile(uv, config)
     -- read one time instead of a lot ?
@@ -25,10 +29,20 @@ local function transpile(uv, config)
             local ast = parse(content)
             --codegen
             local emitted = {}
+            --
             local has_pragma = content:match(config.H_PRAGMA)
+            local has_map_helper = content:match(">.-{.-map%(.-%)")
+            local has_filter_helper = content:match(">.-{.-filter%(.-%)")
             if has_pragma then
                 emitted[#emitted + 1] = config.H_PREAMBLE
             end
+            if has_map_helper then
+                emitted[#emitted + 1] = config.LUAX_MAP_HELPER_PREAMBLE
+            end
+            if has_filter_helper then
+                emitted[#emitted + 1] = config.LUAX_FILTER_HELPER_PREAMBLE
+            end
+            --
             for _, node in ipairs(ast) do
                 emitted[#emitted + 1] = emit(node, config.RENDER_FUNCTION_NAME)
             end

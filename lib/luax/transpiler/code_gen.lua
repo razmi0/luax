@@ -1,3 +1,4 @@
+--> luax -> hyperscript --> index.html
 local function emit(node, RENDER_FUNCTION_NAME)
     -- element: h("tag", {...props...}, { ...children... })
     local function emit_children(nodes)
@@ -30,9 +31,8 @@ local function emit(node, RENDER_FUNCTION_NAME)
     end
 
     if node.tag then
-        -- is it uppercase => other component ?
         local tag = RENDER_FUNCTION_NAME
-        if node.tag:match("^[A-Z]") then
+        if node.tag:match("^[A-Z]") then                 -- Uppercase or not ?
             tag = RENDER_FUNCTION_NAME .. '(%s, %s, %s)' -- node.tag .. "()"
         else
             tag = RENDER_FUNCTION_NAME .. '(%q, %s, %s)'
@@ -44,11 +44,18 @@ local function emit(node, RENDER_FUNCTION_NAME)
             emit_children(node.children)
         )
     elseif node.text then
-        local txt = node.text:gsub("[\n\t\b]", ""):gsub("^%s*(.-)%s*$", "%1")
+        --
+        local txt = node.text:gsub("[\n\t\b]", ""):gsub("^%s*(.-)%s*$", "%1") -- trim
         return string.format("%q", txt)
     elseif node.expr then
-        return node.expr
+        -- node.expr is now a list of nodes (lua/text/element)
+        local parts = {}
+        for _, part in ipairs(node.expr) do
+            parts[#parts + 1] = emit(part, RENDER_FUNCTION_NAME)
+        end
+        return table.concat(parts)
     elseif node.lua then
+        --
         return node.lua
     end
 end
