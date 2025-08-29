@@ -48,7 +48,7 @@ local function emit(node, RENDER_FUNCTION_NAME)
         local txt = node.text:gsub("[\n\t\b]", ""):gsub("^%s*(.-)%s*$", "%1") -- trim
         return string.format("%q", txt)
     elseif node.expr then
-        -- node.expr is now a list of nodes (lua/text/element)
+        -- node.expr is a list of nodes (lua/text/element)
         local parts = {}
         for _, part in ipairs(node.expr) do
             parts[#parts + 1] = emit(part, RENDER_FUNCTION_NAME)
