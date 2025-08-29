@@ -9,14 +9,16 @@ local items = {<span>Lobby</span>, <span>Zerty</span>, <span>2</span>, <span>3</
 
 function App()
     return (
-        <NavbarContainer>
-            <NavbarBrand>Not my site but is my site i said</NavbarBrand>
-            <NavLinks>
+        <div>
             {map(items, function(item)
                 return <NavItem>{item}</NavItem>
             end)}
-            </NavLinks>
-        </NavbarContainer>
+        </div>
+        <div>
+            {map(items, function(item)
+                return <NavItem>{item}</NavItem>
+            end)}
+        </div>
     )
 end
 
