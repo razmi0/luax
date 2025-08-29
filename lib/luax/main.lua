@@ -11,7 +11,7 @@ transpile({
     BUILD_PATH            = "build",                    -- path to transpiled directory
     LUAX_FILE_EXTENSION   = ".luax",                    -- extension use to detect luax files
     TARGET_FILE_EXTENSION = ".lua",                     -- extension for transpiled files
-    RENDER_FUNCTION_NAME  = "Luax",                     -- the render function name
+    RENDER_FUNCTION_NAME  = "lx",                       -- the render function name
     RENDER_FUNCTION_PATH  = "lib.luax.transpiler.luax", -- path to the render function
 })
 
