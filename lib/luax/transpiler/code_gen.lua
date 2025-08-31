@@ -25,17 +25,20 @@ end
 
 --- take the ast and translate to lx functions stringified ready to be writed somewhere
 --- element: h("tag", {...props...}, { ...children... })
-local function emit(node, RENDER_FUNCTION_NAME)
+---@param config TranspilerConfig
+local function emit(node, config)
+    local render_f_name = config.RENDER_FUNCTION_NAME
+
     local function emit_children(nodes)
         local children = {}
         for _, child in ipairs(nodes or {}) do
-            children[#children + 1] = emit(child, RENDER_FUNCTION_NAME)
+            children[#children + 1] = emit(child, config)
         end
         return #children > 0 and "{ " .. table.concat(children, ", ") .. " }" or "{}"
     end
 
     if node.tag then
-        local lx_call = RENDER_FUNCTION_NAME
+        local lx_call = render_f_name
         if node.tag:match("^[A-Z]") then        -- Uppercase or not ?
             lx_call = lx_call .. '(%s, %s, %s)' -- function
         else
@@ -55,7 +58,7 @@ local function emit(node, RENDER_FUNCTION_NAME)
         -- node.expr is a list of nodes (lua/text/element)
         local parts = {}
         for _, part in ipairs(node.expr) do
-            parts[#parts + 1] = emit(part, RENDER_FUNCTION_NAME)
+            parts[#parts + 1] = emit(part, config)
         end
         return table.concat(parts)
     elseif node.lua then
@@ -67,8 +70,6 @@ local function emit(node, RENDER_FUNCTION_NAME)
             "{}",
             emit_children(node.children)
         )
-    else
-        print("Unexpected in AST : node is type {}")
     end
 end
 

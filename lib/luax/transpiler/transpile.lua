@@ -30,11 +30,11 @@ local function transpile(config)
         if file:sub(-5) == config.LUAX_FILE_EXTENSION then
             local path = config.SRC_PATH .. "/" .. file
             local content = fs:read(path)
-            local ast = parse(content)     -- parsing
+            local ast = parse(content, config) -- parsing
             local emitted = compose(content, config,
                 function(acc)
                     for _, node in ipairs(ast) do
-                        acc[#acc + 1] = emit(node, config.RENDER_FUNCTION_NAME)
+                        acc[#acc + 1] = emit(node, config)
                     end
                     return acc
                 end)

@@ -105,9 +105,10 @@ local GRAMMAR           = P {
         ),
 }
 
-local function parse(content)
+---@param config TranspilerConfig
+local function parse(content, config)
     local ast = lpeg.match(GRAMMAR, content)
-    print(require("inspect")(ast))
+    -- print(require("inspect")(ast))
     return ast
 end
 

@@ -7,7 +7,7 @@ local function render_props(props)
     local acc = {}
     for k, v in pairs(props) do
         v = eval(v)
-        table.insert(acc, string.format('%s=%q', k, v))
+        acc[#acc + 1] = string.format('%s=%q', k, v)
     end
     return #acc > 0 and (" " .. table.concat(acc, " ")) or ""
 end
@@ -21,13 +21,13 @@ local function render_children(children)
             for _, c in ipairs(child) do
                 c = eval(c)
                 if c ~= nil and c ~= false then
-                    table.insert(acc, tostring(c))
+                    acc[#acc + 1] = tostring(c)
                 end
             end
         else
             child = eval(child)
             if child ~= nil and child ~= false then
-                table.insert(acc, tostring(child))
+                acc[#acc + 1] = tostring(child)
             end
         end
     end
