@@ -1,0 +1,51 @@
+local Nav = require("build.Nav")
+local Content = require("build.Content")
+local Hero = require("build.Hero")
+local Features = require("build.Features")
+local Footer = require("build.Footer")
+
+local nav_links = { "Lobby", "Home", "Contact", "About"}
+local feature_items = {{ title = "Feature 1", description = "This is the first feature." },
+  { title = "Feature 2", description = "This is the second feature." },
+  { title = "Feature 3", description = "This is the third feature." },}
+
+function App()
+    return (
+        <div>
+            <Nav.NavbarContainer>
+                <Nav.NavbarBrand>BrandName {1 + 1}</Nav.NavbarBrand>
+                <Nav.NavLinks>
+                    {map(nav_links, function(link)
+                        return <Nav.NavItem>{link}</Nav.NavItem>
+                    end)}
+                </Nav.NavLinks>
+            </Nav.NavbarContainer>
+
+            <Content>
+                <Hero.Main>
+                    <Hero.Title>Page Headline</Hero.Title>
+                    <Hero.Subtitle>Engaging subtitle that explains your value proposition.</Hero.Subtitle>
+                    <Hero.CTAButton>Get Started</Hero.CTAButton>
+                </Hero.Main>
+
+                <Features.Grid>
+                    {map(feature_items, function(feature)
+                        return (
+                            <Features.Card>
+                                <Features.Title>{feature.title}</Features.Title>
+                                <Features.Description>{feature.description}</Features.Description>
+                            </Features.Card>
+                        )
+                    end)}
+                </Features.Grid>
+            </Content>
+
+            <Footer.Container>
+                <Footer.Text>© 2025 BrandName. All rights reserved.</Footer.Text>
+            </Footer.Container>
+            </div>
+    )
+end
+
+
+return App

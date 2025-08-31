@@ -18,7 +18,16 @@ local GRAMMAR           = P {
     CloseTag = C(NAME),
 
     Element =
-        ( -- allow co-working lua and html code expressions. Start with "<" and allow recursive Element/Expr
+        ( -- fragment
+            P("<") * SPACING * P(">") *
+            Ct((V("Element") + V("Expr") + V("Text")) ^ 0) *
+            P("<") * SPACING * P("/") * SPACING * P(">")
+            / function(children)
+                return { fragment = true, children = children, attrs = {} }
+            end
+        )
+        +
+        ( -- allow co-working lua and html code expressions. Start with "<" and allow recursive Element/Expr like jsx
             P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P(">")
             * Ct((V("Element") + V("Expr") + V("Text")) ^ 0)
             * P("</") * SPACING * V("CloseTag") * SPACING * P(">")
@@ -31,11 +40,7 @@ local GRAMMAR           = P {
         ( -- self-closing tags
             P("<") * SPACING * C(NAME) * Ct(V("Attr") ^ 0) * SPACING * P("/>") /
             function(tag, attrs)
-                return {
-                    tag = tag,
-                    children = {},
-                    attrs = attrs
-                }
+                return { tag = tag, children = {}, attrs = attrs }
             end
         ),
 
@@ -102,7 +107,7 @@ local GRAMMAR           = P {
 
 local function parse(content)
     local ast = lpeg.match(GRAMMAR, content)
-    -- print(require("inspect")(ast))
+    print(require("inspect")(ast))
     return ast
 end
 

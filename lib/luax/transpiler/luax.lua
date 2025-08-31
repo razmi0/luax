@@ -43,6 +43,10 @@ local function Luax(tag, props, children)
         props = props or {}
         props.children = children
         return tag(props)
+    else
+        -- fragment (tag is nil)
+        local children_str = render_children(children)
+        return string.format("%s", children_str)
     end
 end
 

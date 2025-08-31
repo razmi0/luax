@@ -1,8 +1,14 @@
 local uv = require("luv")
 local fs = require("lib.luax.utils.fs").new(uv)
 
-local function renderer(render_function)
-    return [[
+---@class ToSSGConfig
+---@field entry_path string
+---@field out_path string|nil
+
+---@param config ToSSGConfig
+local function to_ssg(config)
+    local luax_app = require(config.entry_path) -- App
+    local rendered = [[
     <!DOCTYPE html>
         <html lang="en">
             <head>
@@ -12,23 +18,17 @@ local function renderer(render_function)
             </head>
             <body>
         ]]
-        .. render_function() ..
+        .. luax_app() ..
         [[
             </body>
         </html>
         ]]
-end
-
----@class ToSSGConfig
----@field entry_path string
----@field out_path string
-
----@param config ToSSGConfig
-local function to_ssg(config)
-    local luax_app = require(config.entry_path) -- App
-    local page = renderer(luax_app)
-    fs:write(config.out_path or "index.html", page)
+    if config.out_path then
+        fs:write(config.out_path or "index.html", rendered)
+        return rendered
+    end
     uv.run("once")
+    return rendered
 end
 
 return to_ssg

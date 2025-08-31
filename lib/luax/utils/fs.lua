@@ -44,6 +44,24 @@ function Fs:has_subdir(name)
     end
 end
 
+function Fs:list_dir(path)
+    local handle = self.uv.fs_opendir(self.uv.cwd() .. path)
+    if not handle then return false end
+    local dirs = {}
+    while true do
+        local batch = self.uv.fs_readdir(handle)
+        if not batch then
+            self.uv.fs_closedir(handle)
+            return dirs
+        end
+        for _, e in ipairs(batch) do
+            if e.type == "directory" then
+                dirs[#dirs + 1] = e.name
+            end
+        end
+    end
+end
+
 -- sync
 function Fs:create_dir(name)
     if not self:has_subdir(name) then
