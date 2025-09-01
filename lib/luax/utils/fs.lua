@@ -25,9 +25,33 @@ function Fs:list_files(path)
     return files
 end
 
+function Fs:list(path)
+    local handle = self.uv.fs_opendir(path)
+    if not handle then return {} end
+    local elements = {}
+    while true do
+        local batch = self.uv.fs_readdir(handle)
+        if not batch then break end
+        for _, e in ipairs(batch) do
+            elements[#elements + 1] = e
+        end
+    end
+    self.uv.fs_closedir(handle)
+    return elements
+end
+
 -- sync
-function Fs:has_subdir(name)
-    local handle = self.uv.fs_opendir(self.uv.cwd())
+function Fs:has_subdir(path)
+    path = path:gsub("/$", "")
+    local up_path, name = path:match("^(.*)/([^/]+)$")
+    if not up_path then
+        up_path = "."
+        name = path
+    elseif up_path == "" then
+        up_path = "/"
+    end
+    if name == "" then return false end
+    local handle = self.uv.fs_opendir(up_path)
     if not handle then return false end
     while true do
         local batch = self.uv.fs_readdir(handle)
@@ -63,9 +87,9 @@ function Fs:list_dir(path)
 end
 
 -- sync
-function Fs:create_dir(name)
-    if not self:has_subdir(name) then
-        assert(self.uv.fs_mkdir(self.uv.cwd() .. "/" .. name, 493), "Failed creating folder, folder already exist")
+function Fs:create_dir(path)
+    if not self:has_subdir(path) then
+        assert(self.uv.fs_mkdir(path, 493), "Failed creating folder, folder already exist")
     end
 end
 

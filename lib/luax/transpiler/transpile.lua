@@ -13,37 +13,58 @@ local compose = require("lib.luax.transpiler.compose")
 ---@field RENDER_FUNCTION_PATH string
 ---@field TARGET_FILE_EXTENSION string
 
+---@param config TranspilerConfig
+local function generate_build(config, on_file)
+    local fs = Fs.new(uv)
+    assert(fs:has_subdir(config.SRC_PATH), "No source directory found : " .. config.SRC_PATH)
+    --
+    fs:create_dir(config.BUILD_PATH)
+    --
+    local function explore(src_path, build_path)
+        local dir_list = fs:list(src_path)
+        for _, entry in ipairs(dir_list) do
+            local new_src_path = src_path .. "/" .. entry.name
+            local new_build_path = build_path .. "/" .. entry.name
+            --
+            if entry.type == "file" then
+                --
+                local content = fs:read(new_src_path)
+                local writable, new_file_name = on_file(entry.name, content)
+                fs:write(build_path .. "/" .. new_file_name, writable)
+                --
+            elseif entry.type == "directory" then
+                --
+                fs:create_dir(new_build_path)
+                explore(new_src_path, new_build_path)
+                --
+            end
+        end
+    end
 
+    explore(config.SRC_PATH, config.BUILD_PATH)
+end
 
---> luax -> hyperscript --> index.html
 ---@param config TranspilerConfig
 local function transpile(config)
-    -- read one time instead of a lot ?
-    local fs = Fs.new(uv)
-    local x = fs:list_dir("/src/")
-    print(inspect(x))
-    if not fs:has_subdir(config.SRC_PATH) then return end
-    fs:create_dir(config.BUILD_PATH)
-    local files = fs:list_files(config.SRC_PATH)
-    -- for _, folder in ipairs(folders) do
-    for _, file in ipairs(files) do
-        if file:sub(-5) == config.LUAX_FILE_EXTENSION then
-            local path = config.SRC_PATH .. "/" .. file
-            local content = fs:read(path)
+    generate_build(config, function(filename, content)
+        local ext = config.LUAX_FILE_EXTENSION
+        if filename:sub(- #ext) == ext then
+            --
             local ast = parse(content, config) -- parsing
-            local emitted = compose(content, config,
+            local emitted = compose(           -- code generation
+                content,
+                config,
                 function(acc)
                     for _, node in ipairs(ast) do
                         acc[#acc + 1] = emit(node, config)
                     end
                     return acc
-                end)
-            -- config.TARGET_FILE_EXTENSION
-            local target_file_name = file:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION)
-            fs:write(config.BUILD_PATH .. "/" .. target_file_name, emitted)
+                end
+            )
+            --
+            return emitted, filename:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION)
         end
-        -- end
-    end
+    end)
     uv.run()
 end
 
