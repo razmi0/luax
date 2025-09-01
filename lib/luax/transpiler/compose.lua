@@ -45,7 +45,9 @@ local function format_header(comments)
     return table.concat(acc, "\n")
 end
 
+---@param content string
 ---@param config TranspilerConfig
+---@param ... fun(composed : table<string>, content : string, config : TranspilerConfig)
 local function compose(content, config, ...)
     local cbs = { ... }
     -- inject headers
@@ -60,12 +62,10 @@ local function compose(content, config, ...)
     if content:match(">.-{.-filter%(.-%)") then
         injected[#injected + 1] = LUAX_FILTER_HELPER_PREAMBLE
     end
-    -- inject composed
-    local composed = injected
     for _, cb in ipairs(cbs) do
-        composed = cb(composed, content, config)
+        cb(injected, content, config)
     end
-    return composed
+    return injected
 end
 
 return compose

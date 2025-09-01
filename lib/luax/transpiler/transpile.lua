@@ -1,9 +1,9 @@
 local uv      = require("luv")
 local inspect = require("inspect")
-local Fs      = require("lib.luax.utils.fs")
 local parse   = require("lib.luax.transpiler.parser_ast")
 local emit    = require("lib.luax.transpiler.code_gen")
 local compose = require("lib.luax.transpiler.compose")
+local build   = require("lib.luax.transpiler.build")
 
 ---@class TranspilerConfig
 ---@field SRC_PATH string
@@ -13,64 +13,29 @@ local compose = require("lib.luax.transpiler.compose")
 ---@field RENDER_FUNCTION_PATH string
 ---@field TARGET_FILE_EXTENSION string
 
---- Handle filesystem build
----@param config TranspilerConfig
----@param on_file fun(filename: string, content: string): (builded_filename: string| nil, emitted: string| nil )
-local function generate_build(config, on_file)
-    local fs = Fs.new(uv)
-    assert(fs:has_subdir(config.SRC_PATH), "No source directory found : " .. config.SRC_PATH)
-    --
-    fs:create_dir(config.BUILD_PATH)
-    --
-    local function explore(src_path, build_path)
-        local dir_list = fs:list(src_path)
-        for _, entry in ipairs(dir_list) do
-            local new_src_path = src_path .. "/" .. entry.name
-            local new_build_path = build_path .. "/" .. entry.name
-            --
-            if entry.type == "file" then
-                --
-                local content = fs:read(new_src_path)
-                local new_file_name, writable = on_file(entry.name, content)
-                if writable and new_file_name then
-                    fs:write(build_path .. "/" .. new_file_name, writable)
-                end
-                --
-            elseif entry.type == "directory" then
-                --
-                fs:create_dir(new_build_path)
-                explore(new_src_path, new_build_path)
-                --
-            end
-        end
-    end
 
-    explore(config.SRC_PATH, config.BUILD_PATH)
-end
 
 ---@param config TranspilerConfig
 local function transpile(config)
-    generate_build(config,
-        function(filename, content)
+    build(
+        config,
+        function(file)
             local ext = config.LUAX_FILE_EXTENSION
-            if filename:sub(- #ext) == ext then
-                --
-                local ast = parse(content, config) -- parsing
-                local emitted = compose(           -- code generation
-                    content,
-                    config,
-                    function(acc)
-                        for _, node in ipairs(ast) do
-                            acc[#acc + 1] = emit(node, config)
-                        end
-                        return acc
+            if not file.name:sub(- #ext) == ext then return end
+            --
+            local ast = parse(file.content, config)     -- parsing
+            local emitted = compose(                    -- code generation
+                file.content,
+                config,
+                function(acc)
+                    for _, node in ipairs(ast) do
+                        acc[#acc + 1] = emit(node, config)
                     end
-                )
-                --
-                return
-                    filename:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION),
-                    emitted
-            end
+                end)
+            --
+            return
+                file.name:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION),
+                emitted
         end
     )
     uv.run()

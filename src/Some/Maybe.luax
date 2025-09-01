@@ -1,9 +1,0 @@
-function Maybe(props)
-return (
-    <main>
-      {props.children}
-    </main>
-  );
-end
-
-return Maybe

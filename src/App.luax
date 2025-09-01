@@ -1,8 +1,8 @@
-local Nav = require("build.Nav")
-local Content = require("build.Content")
-local Hero = require("build.Hero")
-local Features = require("build.Features")
-local Footer = require("build.Footer")
+local Nav = require("build.components.Nav")
+local Content = require("build.components.Content")
+local Hero = require("build.components.Hero")
+local Features = require("build.components.Features")
+local Footer = require("build.components.Footer")
 
 local nav_links = { "Lobby", "Home", "Contact", "About"}
 local feature_items = {{ title = "Feature 1", description = "This is the first feature." },

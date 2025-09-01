@@ -1,11 +1,15 @@
 
 local Page = require("build.App")
 function App()
-    return (
+local items = {"a","b", "c"}
+    return
         <>
             <h1>The page</h1>
+            {map(items,function(item)
+                return <span>{item}</span>
+            end)}
+            Coucou
             <Page />
         </>
-    )
 end
 return App
