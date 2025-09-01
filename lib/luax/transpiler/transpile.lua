@@ -1,8 +1,8 @@
 local uv      = require("luv")
+local inspect = require("inspect")
 local Fs      = require("lib.luax.utils.fs")
 local parse   = require("lib.luax.transpiler.parser_ast")
 local emit    = require("lib.luax.transpiler.code_gen")
-local inspect = require("inspect")
 local compose = require("lib.luax.transpiler.compose")
 
 ---@class TranspilerConfig
@@ -46,25 +46,28 @@ end
 
 ---@param config TranspilerConfig
 local function transpile(config)
-    generate_build(config, function(filename, content)
-        local ext = config.LUAX_FILE_EXTENSION
-        if filename:sub(- #ext) == ext then
-            --
-            local ast = parse(content, config) -- parsing
-            local emitted = compose(           -- code generation
-                content,
-                config,
-                function(acc)
-                    for _, node in ipairs(ast) do
-                        acc[#acc + 1] = emit(node, config)
+    generate_build(config,
+        function(filename, content)
+            local ext = config.LUAX_FILE_EXTENSION
+            if filename:sub(- #ext) == ext then
+                --
+                local ast = parse(content, config) -- parsing
+                local emitted = compose(           -- code generation
+                    content,
+                    config,
+                    function(acc)
+                        for _, node in ipairs(ast) do
+                            acc[#acc + 1] = emit(node, config)
+                        end
+                        return acc
                     end
-                    return acc
-                end
-            )
-            --
-            return emitted, filename:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION)
+                )
+                --
+                local builded_filename = filename:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION)
+                return emitted, builded_filename
+            end
         end
-    end)
+    )
     uv.run()
 end
 
