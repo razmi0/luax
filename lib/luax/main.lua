@@ -1,7 +1,6 @@
 --TODO(1) : add metadata for preambles in parser ?
 --    (2) : luax embedded attributes in parser ?
 --    (3) : add a way to add custom preambles in parser ?
---    (3) : explore /src/ recursively ?
 --
 local to_ssg    = require("lib.luax.utils.to_ssg")
 local transpile = require("lib.luax.transpiler.transpile")
