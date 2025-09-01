@@ -13,7 +13,9 @@ local compose = require("lib.luax.transpiler.compose")
 ---@field RENDER_FUNCTION_PATH string
 ---@field TARGET_FILE_EXTENSION string
 
+--- Handle filesystem build
 ---@param config TranspilerConfig
+---@param on_file fun(filename: string, content: string): (builded_filename: string| nil, emitted: string| nil )
 local function generate_build(config, on_file)
     local fs = Fs.new(uv)
     assert(fs:has_subdir(config.SRC_PATH), "No source directory found : " .. config.SRC_PATH)
@@ -29,8 +31,10 @@ local function generate_build(config, on_file)
             if entry.type == "file" then
                 --
                 local content = fs:read(new_src_path)
-                local writable, new_file_name = on_file(entry.name, content)
-                fs:write(build_path .. "/" .. new_file_name, writable)
+                local new_file_name, writable = on_file(entry.name, content)
+                if writable and new_file_name then
+                    fs:write(build_path .. "/" .. new_file_name, writable)
+                end
                 --
             elseif entry.type == "directory" then
                 --
@@ -63,13 +67,13 @@ local function transpile(config)
                     end
                 )
                 --
-                local builded_filename = filename:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION)
-                return emitted, builded_filename
+                return
+                    filename:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION),
+                    emitted
             end
         end
     )
     uv.run()
 end
-
 
 return transpile
