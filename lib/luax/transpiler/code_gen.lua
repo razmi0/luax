@@ -1,6 +1,5 @@
 --> luax -> hyperscript --> index.html
 
-
 local function emit_props(attrs)
     if not attrs or #attrs == 0 then
         return "{}"
@@ -21,7 +20,6 @@ local function emit_props(attrs)
     end
     return "{ " .. table.concat(parts, ", ") .. " }"
 end
-
 
 --- take the ast and translate to lx functions stringified ready to be writed somewhere
 --- element: h("tag", {...props...}, { ...children... })
