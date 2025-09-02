@@ -1,17 +1,34 @@
---TODO(1) : add metadata for preambles in parser ? (meeeh)
 --    (2) : luax embedded attributes in parser ? (have to)
---    (3) : add a way to add custom preambles in parser ? (yeah why not)
+--    (3) : tranpiler plugins
 --
-local to_ssg    = require("lib.luax.utils.to_ssg")
-local transpile = require("lib.luax.transpiler.transpile")
---
-transpile({
-    SRC_PATH              = "src",                      -- path to luax files
-    BUILD_PATH            = "build",                    -- path to transpiled directory
-    LUAX_FILE_EXTENSION   = ".luax",                    -- extension use to detect luax files
-    TARGET_FILE_EXTENSION = ".lua",                     -- extension for transpiled files
-    RENDER_FUNCTION_NAME  = "lx",                       -- the render function name
-    RENDER_FUNCTION_PATH  = "lib.luax.transpiler.luax", -- path to the render function
+local to_ssg  = require("lib.luax.utils.to_ssg")
+local plugins = require("lib.luax.transpiler.plugins")
+
+---@class TranspilerConfig
+---@field TRANSPILER_VERSION string
+---@field LICENCE string
+---@field AUTHOR string
+---@field REPO_LINK string
+---@field DATE string                   -- transpile time
+---@field SRC_PATH string               -- path to luax files
+---@field BUILD_PATH string             -- path to transpiled directory
+---@field LUAX_FILE_EXTENSION string    -- extension use to detect luax files
+---@field RENDER_FUNCTION_NAME string   -- the render function name
+---@field RENDER_FUNCTION_PATH string   -- path to the render function
+---@field TARGET_FILE_EXTENSION string  -- extension for transpiled files
+
+require("lib.luax.transpiler.transpile")({
+    TRANSPILER_VERSION    = "0.0.1",
+    LICENCE               = "NO LICENCE",
+    AUTHOR                = "razmi0",
+    REPO_LINK             = "https://github.com/razmi0/luax",
+    DATE                  = tostring(os.date("%Y-%m-%d %H:%M:%S")),
+    SRC_PATH              = "src",
+    BUILD_PATH            = "build",
+    LUAX_FILE_EXTENSION   = ".luax",
+    TARGET_FILE_EXTENSION = ".lua",
+    RENDER_FUNCTION_NAME  = "lx",
+    RENDER_FUNCTION_PATH  = "lib.luax.transpiler.luax",
 })
 
 to_ssg({
