@@ -1,7 +1,7 @@
-
 local Page = require("build.App")
-function App()
-local items = {"a","b", "c"}
+
+return function ()
+    local items = {"a","b", "c", "d"}
     return
         <>
             <h1>The page</h1>
@@ -12,4 +12,3 @@ local items = {"a","b", "c"}
             <Page />
         </>
 end
-return App
