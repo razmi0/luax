@@ -114,12 +114,12 @@ local GRAMMAR           = P {
 ---@field expr LuaxAstNode[]|nil
 ---@field children LuaxAstNode[]|nil
 
----@param config TranspilerConfig
-local function parse(content, config)
-    ---@type LuaxAstNode
-    local ast = lpeg.match(GRAMMAR, content)
-    -- print(require("inspect")(ast))
-    return ast
+--- Parser
+---@param ctx TranspilerContext
+local function parse(ctx)
+    ---@type LuaxAstNode[]
+    local ast = lpeg.match(GRAMMAR, ctx.file.content)
+    ctx.ast = ast
 end
 
 return parse
