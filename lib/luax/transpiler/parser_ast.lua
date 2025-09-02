@@ -105,8 +105,18 @@ local GRAMMAR           = P {
         ),
 }
 
+---@class LuaxAstNode
+---@field lua string|nil
+---@field fragment true|nil
+---@field tag string|nil
+---@field attrs table<{ [string] : { kind : "string"|"expr"|"bool", value : string } }>|nil
+---@field text string|nil
+---@field expr LuaxAstNode[]|nil
+---@field children LuaxAstNode[]|nil
+
 ---@param config TranspilerConfig
 local function parse(content, config)
+    ---@type LuaxAstNode
     local ast = lpeg.match(GRAMMAR, content)
     -- print(require("inspect")(ast))
     return ast
