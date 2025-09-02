@@ -5,6 +5,9 @@ local Fs = require("lib.luax.utils.fs")
 ---@field name string
 ---@field content string
 
+--- Handle the build process of a luax project.
+--- The callback "on_file" is called when a file is found.
+--- If the callback returns (1) : string , (2) : string[], the file is written to the build directory.
 ---@param config TranspilerConfig
 ---@param on_file fun(file : File): (builded_filename: string| nil, emitted: string[]| nil )
 local function build(config, on_file)
