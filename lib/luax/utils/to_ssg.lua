@@ -24,11 +24,11 @@ local function to_ssg(config)
         </html>
         ]]
     if config.out_path then
-        fs:write(config.out_path or "index.html", rendered)
-        return rendered
+        fs:write(config.out_path, rendered)
     end
-    uv.run("once")
     return rendered
 end
+
+uv.run("once")
 
 return to_ssg
