@@ -1,8 +1,9 @@
 --    (2) : luax embedded attributes in parser ? (have to)
---    (3) : tranpiler plugins
+--    (3) : transpiler plugins
 --
-local to_ssg  = require("lib.luax.utils.to_ssg")
-local plugins = require("lib.luax.transpiler.plugins")
+local transpiler = require("lib.luax.transpiler.transpile")
+local to_ssg     = require("lib.luax.utils.to_ssg")
+local plugins    = require("lib.luax.transpiler.plugins")
 
 ---@class TranspilerConfig
 ---@field TRANSPILER_VERSION string
@@ -17,7 +18,7 @@ local plugins = require("lib.luax.transpiler.plugins")
 ---@field RENDER_FUNCTION_PATH string   -- path to the render function
 ---@field TARGET_FILE_EXTENSION string  -- extension for transpiled files
 
-require("lib.luax.transpiler.transpile")({
+transpiler({
     TRANSPILER_VERSION    = "0.0.1",
     LICENCE               = "NO LICENCE",
     AUTHOR                = "razmi0",
