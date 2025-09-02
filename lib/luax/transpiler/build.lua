@@ -1,8 +1,12 @@
 local uv = require("luv")
 local Fs = require("lib.luax.utils.fs")
 
+---@class File
+---@field name string
+---@field content string
+
 ---@param config TranspilerConfig
----@param on_file fun(file : { name : string, content : string }): (builded_filename: string| nil, emitted: string[]| nil )
+---@param on_file fun(file : File): (builded_filename: string| nil, emitted: string[]| nil )
 local function build(config, on_file)
     local fs = Fs.new(uv)
     assert(fs:has_subdir(config.SRC_PATH), "No source directory found : " .. config.SRC_PATH)
