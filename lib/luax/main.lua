@@ -1,9 +1,10 @@
 --    (2) : luax embedded attributes in parser ? (have to)
 --    (3) : transpiler plugins
 --
-local transpiler = require("lib.luax.transpiler.transpile")
-local to_ssg     = require("lib.luax.utils.to_ssg")
-local plugins    = require("lib.luax.transpiler.plugins")
+local transpiler  = require("lib.luax.transpiler.transpile")
+local to_ssg      = require("lib.luax.utils.to_ssg")
+local user_config = require("lib.luax.luax-config")
+
 
 ---@class TranspilerConfig
 ---@field TRANSPILER_VERSION string
@@ -17,20 +18,16 @@ local plugins    = require("lib.luax.transpiler.plugins")
 ---@field RENDER_FUNCTION_NAME string   -- the render function name
 ---@field RENDER_FUNCTION_PATH string   -- path to the render function
 ---@field TARGET_FILE_EXTENSION string  -- extension for transpiled files
+---@field plugins TranspilerPlugin[]|nil    -- plugins array
 
-transpiler({
-    TRANSPILER_VERSION    = "0.0.1",
-    LICENCE               = "NO LICENCE",
-    AUTHOR                = "razmi0",
-    REPO_LINK             = "https://github.com/razmi0/luax",
-    DATE                  = tostring(os.date("%Y-%m-%d %H:%M:%S")),
-    SRC_PATH              = "src",
-    BUILD_PATH            = "build",
-    LUAX_FILE_EXTENSION   = ".luax",
-    TARGET_FILE_EXTENSION = ".lua",
-    RENDER_FUNCTION_NAME  = "lx",
-    RENDER_FUNCTION_PATH  = "lib.luax.transpiler.luax",
-})
+---@class TranspilerPlugin
+---@field before_parse fun(ctx : TranspilerContext)|nil
+---@field before_emit fun(ctx : TranspilerContext)|nil
+---@field after_emit fun(ctx : TranspilerContext)|nil
+---@field name string
+
+
+transpiler(user_config)
 
 to_ssg({
     entry_path = "build.main",

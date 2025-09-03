@@ -14,9 +14,19 @@ local build_file = require("lib.luax.transpiler.build")
 ---@field ast LuaxAstNode[]
 ---@field emitted string[]
 
+---@param step "before_parse"|"before_emit"|"after_emit"
+local function run_plugins(step, ctx, plugins)
+    if not plugins then return end
+    for _, plugin in ipairs(plugins) do
+        if plugin[step] then
+            plugin[step](ctx)
+        end
+    end
+end
+
 --- Luax transpiler main function
 ---@param config TranspilerConfig
-local function transpile(config, plugins)
+local function transpile(config)
     build_file(
         config,
         function(file)
@@ -33,13 +43,16 @@ local function transpile(config, plugins)
                 ast = {}
             }
             --
+            run_plugins("before_parse", ctx, config.plugins)
             parse(ctx)                  -- parsing (ctx.ast mutation)
+            run_plugins("before_emit", ctx, config.plugins)
             emitter(ctx, function(_ctx) -- code generation (ctx.emitted mutation)
                 local emitted = _ctx.emitted
                 for _, node in ipairs(ctx.ast) do
                     emitted[#emitted + 1] = emit(node, ctx.config)
                 end
             end)
+            run_plugins("after_emit", ctx, config.plugins)
             --
             return target_ext, ctx.emitted
         end)
