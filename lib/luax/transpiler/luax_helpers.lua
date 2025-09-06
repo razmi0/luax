@@ -2,6 +2,7 @@ local uv = require("luv")
 local fs = require("lib.luax.utils.fs").new(uv)
 local this_file_path = "/lib/luax/transpiler/luax_helpers.lua"
 
+
 local function map(tbl, func)
     local newTbl = {}
     for i, v in ipairs(tbl) do
@@ -25,10 +26,9 @@ local this_content = fs:read(uv.cwd() .. this_file_path)
 ---@param fn_name "map"|"filter"
 local function get_helper(fn_name)
     return this_content:match(
-        "(local%sfunction%s" ..
+        "(function.-" ..
         fn_name ..
-        ".-" ..
-        "return%stable%.concat%(newTbl%)%send%\n)"
+        ".-return.-end%s)"
     )
 end
 

@@ -25,7 +25,7 @@ end
 --- element: h("tag", {...props...}, { ...children... })
 ---@param config TranspilerConfig
 local function emit(node, config)
-    local render_f_name = config.RENDER_FUNCTION_NAME
+    local render_f_name = config.render_function_name
 
     local function emit_children(nodes)
         local children = {}

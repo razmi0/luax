@@ -31,9 +31,9 @@ local function transpile(config)
         config,
         function(file)
             --
-            local ext = config.LUAX_FILE_EXTENSION
-            local target_ext = file.name:gsub("%.[^.]*$", config.TARGET_FILE_EXTENSION)
-            if not file.name:sub(- #ext) == ext then return end
+            -- local ext = config.luax_file_extension
+            -- local target_ext = file.name:gsub("%.[^.]*$", config.build.target_file_extension)
+            -- if not file.name:sub(- #ext) == ext then return end
 
             ---@type TranspilerContext
             local ctx = {
@@ -54,7 +54,7 @@ local function transpile(config)
             end)
             run_plugins("after_emit", ctx, config.plugins)
             --
-            return target_ext, ctx.emitted
+            return ctx.emitted
         end)
     uv.run()
 end
