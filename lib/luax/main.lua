@@ -1,5 +1,7 @@
 --    (2) : luax embedded attributes in parser ? (have to)
 --    (3) : allow comments in luax
+--    (4) : allow literal expressions in parser
+--    (5) : add line/col information if parser crash
 --
 local transpiler  = require("lib.luax.transpiler.transpile")
 local to_ssg      = require("lib.luax.utils.to_ssg")
