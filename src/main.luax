@@ -4,11 +4,9 @@ return function ()
     local items = {"a","b", "c", "d"}
     return
         <>
-        
             {map(items,function(item)
                 return <span>{item}</span>
             end)}
-            
-            <Page />
+
         </>
 end
