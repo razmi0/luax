@@ -105,14 +105,6 @@ local GRAMMAR           = P {
         ),
 }
 
----@class LuaxAstNode
----@field lua string|nil
----@field fragment true|nil
----@field tag string|nil
----@field attrs table<{ [string] : { kind : "string"|"expr"|"bool", value : string } }>|nil
----@field text string|nil
----@field expr LuaxAstNode[]|nil
----@field children LuaxAstNode[]|nil
 
 --- Parser
 ---@param ctx TranspilerContext

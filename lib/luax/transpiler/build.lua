@@ -1,9 +1,7 @@
 local uv = require("luv")
 local Fs = require("lib.luax.utils.fs")
 
----@class File
----@field name string
----@field content string
+
 
 --- Handle the build process of a luax project.
 --- The callback "on_file" is called when a file is found.

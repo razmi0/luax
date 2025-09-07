@@ -1,48 +1,7 @@
----@class TranspilerConfig
----@field headers HeaderTranspilerConfig
----@field luax_file_extension string
----@field build { out_dir : string, no_emit : boolean, target_file_extension : string }
----@field root string                       -- path to luax files
----@field render_function_name string       -- the render function name
----@field render_function_path string       -- path to the render function
----@field plugins TranspilerPlugin[]|nil    -- plugins array
+local deep_merge = require("lib.luax.utils.deep_merge")
+local sort_aliases = require("lib.luax.utils.sort_aliases")
 
----@class PartialTranspilerConfig
----@field root string|nil
----@field build { out_dir : string|nil, no_emit : boolean|nil, target_file_extension : string|nil }| nil -- path to transpiled directory
----@field render_function_name string|nil
----@field render_function_path string|nil
----@field plugins TranspilerPlugin[]|nil
-
----@class HeaderTranspilerConfig
----@field transpiler_version string
----@field licence string
----@field author string
----@field repo_link string
-
----@class TranspilerPlugin
----@field before_parse fun(ctx : TranspilerContext)|nil
----@field before_emit fun(ctx : TranspilerContext)|nil
----@field after_emit fun(ctx : TranspilerContext)|nil
----@field name string
-
-local function deep_merge(partial, extended)
-    local merged = {}
-    for k, v in pairs(partial) do
-        merged[k] = v
-    end
-    for k, v in pairs(extended) do
-        if type(v) == "table" and type(merged[k]) == "table" then
-            merged[k] = deep_merge(merged[k], v)
-        else
-            merged[k] = v
-        end
-    end
-    return merged
-end
-
-
----@param user_config PartialTranspilerConfig
+---@param user_config PartialTranspilerConfig|nil
 ---@return TranspilerConfig
 return function(user_config)
     ---@type TranspilerConfig
@@ -62,10 +21,13 @@ return function(user_config)
             no_emit = false,
             target_file_extension = ".lua",
         },
-        plugins              = {}
+        plugins              = {},
+        alias                = {}
     }
 
     local defined_config = deep_merge(defaults, user_config)
-    -- print(require("inspect")(defined_config))
+    -- aliases are sorted by specificity, a longer aliases
+    -- means more specificity (avoid replacement overlap)
+    defined_config.alias = sort_aliases(defined_config)
     return defined_config
 end
