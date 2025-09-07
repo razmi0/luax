@@ -1,6 +1,8 @@
 local format_header = require("lib.luax.utils.format_header")
 local get_helper    = require("lib.luax.transpiler.luax_helpers")
 
+
+
 --- Assign ctx.emitted to the composition of preambles, headers, luax functions
 --- and transpiled content together in a string[]
 ---@param ctx TranspilerContext
@@ -17,7 +19,8 @@ local function emitter(ctx, cb)
         "REPO: " .. config.headers.repo_link,
     })
 
-    emitted[#emitted + 1] = ("local %s = require(%q)\n"):format(config.render_function_name, config.render_function_path)
+    emitted[#emitted + 1] =
+        ("local %s = require(%q)\n"):format(config.render_function_name, config.render_function_path)
 
     for _, fn in ipairs { "map", "filter" } do
         if content:match(">.-{.-" .. fn .. "%(.-%)") then
@@ -26,6 +29,23 @@ local function emitter(ctx, cb)
     end
 
     cb(ctx)
+
+    local function replace_aliases(path)
+        for _, entry in ipairs(config.alias) do
+            local alias = entry.alias:gsub("([^%w])", "%%%1")
+            path = path:gsub("^" .. alias, entry.path)
+        end
+        return path
+    end
+
+    for i = 1, #emitted do
+        emitted[i] = emitted[i]:gsub(
+            'require%s*%(%s*"(.-)"%s*%)',
+            function(inner)
+                return 'require("' .. replace_aliases(inner) .. '")'
+            end
+        )
+    end
 end
 
 return emitter
