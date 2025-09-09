@@ -16,9 +16,8 @@ user_config              = xpcall(function()
     return require(CONFIG_MODULE_PATH)
 end, function()
     print("\27[38;5;208mNo configuration file found : \27[0m" .. CONFIG_MODULE_PATH)
-    return {}
 end)
-transpile(define_config(user_config))
+transpile(define_config(user_config or {}))
 --
 require("lib.luax.utils.to_ssg")({
     entry_path = "build.main",
