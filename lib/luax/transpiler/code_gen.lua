@@ -63,7 +63,7 @@ local function emit(node, config)
         return node.lua
     elseif node.fragment then
         return string.format(
-            "lx(%s, %s, %s)",
+            render_f_name .. "(%s, %s, %s)",
             "nil",
             "{}",
             emit_children(node.children)
