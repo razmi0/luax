@@ -34,7 +34,7 @@ local function render_children(children)
     return table.concat(acc)
 end
 
-local function Luax(tag, props, children)
+local function __Luax(tag, props, children)
     if type(tag) == "string" then
         local props_str = render_props(props)
         local children_str = render_children(children)
@@ -50,4 +50,4 @@ local function Luax(tag, props, children)
     end
 end
 
-return Luax
+return __Luax
