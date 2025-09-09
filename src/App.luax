@@ -5,7 +5,7 @@ local Features = require("build.components.Features")
 local Footer = require("build.components.Footer")
 
 local nav_links = { 
-    "Lobby", "Home", "Contact", "About"
+    "Lobby", "Home", "Contact", "About", "Login"
 }
 local feature_items = {
     { title = "Feature 1", description = "This is the first feature." },
