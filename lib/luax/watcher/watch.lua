@@ -9,6 +9,7 @@ local uv, inspect = require("luv"), require("inspect")
 ---@field recursive boolean|nil Whether to monitor subdirectories recursively.
 ---@field ignore string[]|nil A list of files that can be ignored.
 ---@field verbose boolean|nil Clear or not the terminal before refreshing stuff.
+---@field extra_args string[]|nil
 
 local function log_error(field)
     error(field .. " not provided. Provide " .. field .. " = '<runtime> <executed_file>'")
@@ -22,16 +23,37 @@ Watch.__index = Watch
 ---@param config WatcherConfig
 function Watch.new(config)
     if not config.exec then log_error("config.exec") end
-    local runtime, executed_file = config.exec:match("([^%s]+)%s+([^%s]+)")
+    -- local runtime, executed_file = config.exec:match("([^%s]+)%s+([^%s]+)")
+
+
+    local function split_exec(str)
+        local parts = {}
+        for token in str:gmatch("%S+") do
+            table.insert(parts, token)
+        end
+        return parts
+    end
+
+    local parts         = split_exec(config.exec)
+
+    local runtime       = parts[1]
+    local executed_file = parts[2]
+    local extra_args    = {}
+    for i = 3, #parts do
+        table.insert(extra_args, parts[i])
+    end
+
     if not runtime or not executed_file then log_error("config.exec") end
     return setmetatable({
+        runtime = runtime,
+        executed_file = executed_file,
+        extra_args = extra_args,
+        --
         events = {},
         paths = config.paths or { "./" },
         handle = nil,
         counter = 0,
         recursive = config and config.recursive or false,
-        runtime = runtime,
-        executed_file = executed_file,
         ignore_file_list = config and config.ignore or {},
         verbose = config and config.verbose or false
     }, Watch)
@@ -75,9 +97,14 @@ function Watch:_spawn(err, filename)
         os.date("%d/%m %H:%M")
     )
 
+    local args = { self.executed_file }
+    for _, a in ipairs(self.extra_args or {}) do
+        table.insert(args, a)
+    end
+
     self.handle = uv.spawn(self.runtime,
         {
-            args = { self.executed_file },
+            args = args,
             stdio = { 0, 1, 2 }, -- directly pipe child stds so no wrappers possible
 
         },
