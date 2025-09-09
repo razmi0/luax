@@ -20,6 +20,6 @@ end)
 transpile(define_config(user_config or {}))
 --
 require("lib.luax.utils.to_ssg")({
-    entry_path = "build.main",
+    entry_path = "build._bundle",
     out_path = "index.html"
 })
