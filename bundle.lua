@@ -82,25 +82,38 @@ local top_level_requires_cache = {}
 local function get_requires(_content)
     local lines = {}
     local all_matches = {}
+
+    local function get_info(line)
+        return line:match("^%s*local%s+([%w_]+)%s*=%s*require%s*%([\"\'](.+)[\"\']%)%s*$")
+    end
+
+    local function evaluate_require(_path, _name)
+        for _, lib in ipairs(FORBIDDEN_REQUIRES) do
+            if _path == lib then
+                if not top_level_requires_cache[_name] then
+                    top_level_requires[#top_level_requires + 1] = "local " ..
+                        _name .. " = require(\"" .. _path .. "\")"
+                    top_level_requires_cache[_name] = true
+                end
+                return true
+            end
+        end
+    end
+
+    local function add_match(_path)
+        _path = _path:gsub("%.", "/")
+        _path = _path .. ".lua"
+        all_matches[#all_matches + 1] = _path
+    end
+
     for line in _content:gmatch("[^\r\n]+") do
         local forbid = false
         lines[#lines + 1] = line
-        local name, path = line:match("^%s*local%s+([%w_]+)%s*=%s*require%s*%([\"\'](.+)[\"\']%)%s*$")
+        local name, path = get_info(line)
         if path then
-            for _, lib in ipairs(FORBIDDEN_REQUIRES) do
-                if path == lib then
-                    if not top_level_requires_cache[name] then
-                        top_level_requires[#top_level_requires + 1] = "local " ..
-                            name .. " = require(\"" .. path .. "\")"
-                        top_level_requires_cache[name] = true
-                    end
-                    forbid = true
-                end
-            end
+            forbid = evaluate_require(path, name)
             if not forbid then
-                path = path:gsub("%.", "/")
-                path = path .. ".lua"
-                all_matches[#all_matches + 1] = path
+                add_match(path)
             end
         end
     end
