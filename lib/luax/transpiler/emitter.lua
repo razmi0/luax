@@ -1,5 +1,5 @@
+local luax_helpers  = require("lib.luax.transpiler.luax_helpers")
 local format_header = require("lib.luax.utils.format_header")
-local get_helper    = require("lib.luax.transpiler.luax_helpers")
 
 
 
@@ -24,7 +24,7 @@ local function emitter(ctx, cb)
 
     for _, fn in ipairs { "map", "filter" } do
         if content:match(">.-{.-" .. fn .. "%(.-%)") then
-            emitted[#emitted + 1] = get_helper(fn)
+            emitted[#emitted + 1] = luax_helpers(fn)
         end
     end
 
