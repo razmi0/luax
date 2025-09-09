@@ -1,5 +1,6 @@
 local uv = require("luv")
-local fs = require("lib.luax.utils.fs").new(uv)
+local Fs = require("lib.luax.utils.fs")
+local fs = Fs.new(uv)
 
 ---@class ToSSGConfig
 ---@field entry_path string
@@ -26,9 +27,10 @@ local function to_ssg(config)
     if config.out_path then
         fs:write(config.out_path, rendered)
     end
+    uv.run("once")
     return rendered
 end
 
-uv.run("once")
+
 
 return to_ssg
