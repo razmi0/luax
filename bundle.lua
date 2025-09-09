@@ -1,3 +1,5 @@
+--(1) : cli arguments (entry point, target file)
+--
 local uv                     = require("luv")
 local inspect                = require("inspect")
 --
@@ -83,7 +85,7 @@ local function get_requires(_content)
     for line in _content:gmatch("[^\r\n]+") do
         local forbid = false
         lines[#lines + 1] = line
-        local name, path = line:match("^local%s*(.-)%s*=%s*require%s*%([^%w+](.-)[^%w+]%)%s*$")
+        local name, path = line:match("^%s*local%s+([%w_]+)%s*=%s*require%s*%([\"\'](.+)[\"\']%)%s*$")
         if path then
             for _, lib in ipairs(FORBIDDEN_REQUIRES) do
                 if path == lib then
@@ -129,7 +131,7 @@ local function import_map(path, on_step)
 
     local function step(_path)
         -- avoid duplication
-        if module_cache[_path] then return {} end
+        if module_cache[_path] then return nil end
         module_cache[_path] = true
 
         local content, weight = read(_path)
@@ -155,7 +157,7 @@ local function import_map(path, on_step)
         return node
     end
 
-    return step(path)
+    return step(path) or {}
 end
 
 
