@@ -17,7 +17,7 @@ function App()
     return (
         <div>
             <Nav.NavbarContainer>
-                <Nav.NavbarBrand>BrandName {1 + 1}</Nav.NavbarBrand>
+                <Nav.NavbarBrand>BrandName {1 + 1 + 103049494}</Nav.NavbarBrand>
                 <Nav.NavLinks>
                     {map(nav_links, function(link)
                         return <Nav.NavItem>{link}</Nav.NavItem>
