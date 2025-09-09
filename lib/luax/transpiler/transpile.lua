@@ -1,9 +1,10 @@
-local uv         = require("luv")
-local inspect    = require("inspect")
-local parse      = require("lib.luax.transpiler.parser_ast")
-local emitter    = require("lib.luax.transpiler.emitter")
-local emit       = require("lib.luax.transpiler.code_gen")
-local build_file = require("lib.luax.transpiler.build")
+local uv      = require("luv")
+local inspect = require("inspect")
+local parse   = require("lib.luax.transpiler.parser_ast")
+local emitter = require("lib.luax.transpiler.emitter")
+local emit    = require("lib.luax.transpiler.code_gen")
+local build   = require("lib.luax.transpiler.build")
+
 
 
 
@@ -20,7 +21,7 @@ end
 --- Luax transpiler main function
 ---@param config TranspilerConfig
 local function transpile(config)
-    build_file(
+    build(
         config,
         function(file)
             --
