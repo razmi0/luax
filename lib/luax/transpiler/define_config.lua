@@ -13,7 +13,7 @@ local function define_config(user_config)
             repo_link          = "https://github.com/razmi0/luax",
         },
         luax_file_extension  = ".luax",
-        render_function_name = "lx",
+        render_function_name = "__Luax",
         render_function_path = "lib.luax.render",
         root                 = "src",
         build                = {
