@@ -3,16 +3,24 @@
 --    (4) : allow literal array expressions in parser
 --    (5) : add line/col information if parser crash
 --    (6) : implement path alias ( done)
---    (7) : no config first
+--    (7) : no config first (done)
 
 --
-local transpiler  = require("lib.luax.transpiler.transpile")
-local to_ssg      = require("lib.luax.utils.to_ssg")
-local user_config = require("lib.luax.luax-config")
-
-transpiler(user_config)
-
-to_ssg({
+local transpile          = require("lib.luax.transpiler.transpile")
+local define_config      = require("lib.luax.transpiler.define_config")
+--
+local CONFIG_MODULE_PATH = "lib.luax.luax-config"
+local _,
+---@type PartialTranspilerConfig
+user_config              = xpcall(function()
+    return require(CONFIG_MODULE_PATH)
+end, function()
+    print("\27[38;5;208mNo configuration file found : \27[0m" .. CONFIG_MODULE_PATH)
+    return {}
+end)
+transpile(define_config(user_config))
+--
+require("lib.luax.utils.to_ssg")({
     entry_path = "build.main",
     out_path = "index.html"
 })
