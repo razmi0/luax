@@ -3,7 +3,7 @@ local sort_aliases = require("lib.luax.utils.sort_aliases")
 
 ---@param user_config PartialTranspilerConfig|nil
 ---@return TranspilerConfig
-return function(user_config)
+local function define_config(user_config)
     ---@type TranspilerConfig
     local defaults = {
         headers              = {
@@ -14,7 +14,7 @@ return function(user_config)
         },
         luax_file_extension  = ".luax",
         render_function_name = "lx",
-        render_function_path = "lib.luax.transpiler.luax",
+        render_function_path = "lib.luax.luax",
         root                 = "src",
         build                = {
             out_dir = "build",
@@ -31,3 +31,5 @@ return function(user_config)
     defined_config.alias = sort_aliases(defined_config)
     return defined_config
 end
+
+return define_config
