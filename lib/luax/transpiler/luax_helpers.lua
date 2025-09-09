@@ -1,5 +1,5 @@
 ---@param fn_name "map"|"filter"
-local function get_helper(fn_name)
+local function luax_helpers(fn_name)
     if fn_name == "map" then
         return [[
         local function map(tbl, func)
@@ -25,4 +25,4 @@ end
     end
 end
 
-return get_helper
+return luax_helpers
