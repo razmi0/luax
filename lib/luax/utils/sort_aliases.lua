@@ -1,5 +1,5 @@
 ---@param config TranspilerConfig
-return function(config)
+local function sort_aliases(config)
     local ordered_aliases = {}
     for alias, path in pairs(config.alias) do
         ordered_aliases[#ordered_aliases + 1] = { alias = alias, path = path }
@@ -9,3 +9,5 @@ return function(config)
     end)
     return ordered_aliases
 end
+
+return sort_aliases
