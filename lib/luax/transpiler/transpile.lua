@@ -1,8 +1,8 @@
 local uv      = require("luv")
 local inspect = require("inspect")
-local parse   = require("lib.luax.transpiler.parser_ast")
+local parser  = require("lib.luax.transpiler.parser")
 local emitter = require("lib.luax.transpiler.emitter")
-local emit    = require("lib.luax.transpiler.code_gen")
+local emit    = require("lib.luax.transpiler.emit")
 local build   = require("lib.luax.transpiler.build")
 
 
@@ -34,7 +34,7 @@ local function transpile(config)
             }
             --
             run_plugins("before_parse", ctx, config.plugins)
-            parse(ctx) -- parsing (ctx.ast mutation)
+            parser(ctx) -- parsing (ctx.ast mutation)
             --
             run_plugins("before_emit", ctx, config.plugins)
             emitter(ctx, function(_ctx) -- code generation (ctx.emitted mutation)
