@@ -8,7 +8,7 @@ require("lib.watcher.watch").new({
     exec =
         "luajit lib/bundler/bundle.lua " ..
         "build/main.lua build/_bundle.lua " ..
-        "--verbose",
+        "--V --R build",
     ignore = { "_bundle.lua" }
 })
     :on("start")
