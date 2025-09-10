@@ -4,7 +4,7 @@ local watcher         = require("lib.watcher.watch")
 --
 
 local bundle_path     = "luajit lib/luax/_bundle.lua"
-local not_bundle_path = "luajit lib/luax/main.lua"
+local not_bundle_path = "luajit lib/luax/transpiler/main.lua"
 
 watcher.new({
     paths = { "./src" },
