@@ -2,7 +2,6 @@ local uv      = require("luv")
 local inspect = require("inspect")
 local parser  = require("lib.luax.transpiler.parser")
 local emitter = require("lib.luax.transpiler.emitter")
-local emit    = require("lib.luax.transpiler.emit")
 local build   = require("lib.luax.transpiler.build")
 
 
@@ -37,12 +36,7 @@ local function transpile(config)
             parser(ctx) -- parsing (ctx.ast mutation)
             --
             run_plugins("before_emit", ctx, config.plugins)
-            emitter(ctx, function(_ctx) -- code generation (ctx.emitted mutation)
-                local emitted = _ctx.emitted
-                for _, node in ipairs(ctx.ast) do
-                    emitted[#emitted + 1] = emit(node, ctx.config)
-                end
-            end)
+            emitter(ctx) -- code gen (ctx.emitted mutation)
             --
             run_plugins("after_emit", ctx, config.plugins)
             --

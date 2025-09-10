@@ -1,13 +1,13 @@
 local luax_helpers  = require("lib.luax.transpiler.luax_helpers")
 local format_header = require("lib.luax.utils.format_header")
+local emit          = require("lib/luax/transpiler/emit")
 
 
 
 --- Assign ctx.emitted to the composition of preambles, headers, luax functions
 --- and transpiled content together in a string[]
 ---@param ctx TranspilerContext
----@param cb fun(ctx : TranspilerContext)
-local function emitter(ctx, cb)
+local function emitter(ctx)
     local config, content, emitted = ctx.config, ctx.file.content, ctx.emitted
 
     emitted[#emitted + 1] = format_header({
@@ -27,9 +27,11 @@ local function emitter(ctx, cb)
             emitted[#emitted + 1] = luax_helpers(fn)
         end
     end
-
-    cb(ctx)
-
+    --
+    for _, node in ipairs(ctx.ast) do
+        emitted[#emitted + 1] = emit(node, ctx.config)
+    end
+    --
     local function replace_aliases(path)
         for _, entry in ipairs(config.alias) do
             local alias = entry.alias:gsub("([^%w])", "%%%1")
