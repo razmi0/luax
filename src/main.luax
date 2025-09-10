@@ -1,13 +1,12 @@
 local App = require("build.App")
 
 function main()
-    local items = {"coucoucouccoucouccou"}
+    local items = {"coucoucouccoucouccou", "coucoucouccoucouccou", "coucocucou"}
     return
         <>
             {map(items,function(item)
                 return <span>{item}</span>
             end)}
-            <App />
         </>
 end
 

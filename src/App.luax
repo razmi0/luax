@@ -11,6 +11,10 @@ local feature_items = {
     { title = "Feature 1", description = "This is the first feature." },
   { title = "Feature 2", description = "This is the second feature." },
   { title = "Feature 3", description = "This is the third feature." },
+  { title = "Feature 3", description = "This is the third feature." },
+  { title = "Feature 3", description = "This is the third feature." },
+  { title = "Feature 3", description = "This is the third feature." },
+  { title = "Feature 3", description = "This is the third feature." },
   }
 
 function App()
