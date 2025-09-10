@@ -1,6 +1,6 @@
 --
 local uv              = require("luv") -- hyperfine : libUv > lib lfs
-local watcher         = require("watch")
+local watcher         = require("lib.watcher.watch")
 --
 
 local bundle_path     = "luajit lib/luax/_bundle.lua"
