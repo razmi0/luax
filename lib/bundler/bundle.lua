@@ -4,18 +4,24 @@ local uv                     = require("luv")
 local inspect                = require("inspect")
 --
 local ENTRY_POINT, OUT_POINT = arg[1], uv.cwd() .. "/" .. arg[2]
-local flags                  = (function()
-    local x = {}
+local flags, globals         = (function()
+    local flag_map = {}
+    local globals = {}
     for i = 3, #arg do
-        if arg[i]:match("^%-%-") then
-            x[arg[i]] = true
+        if arg[i]:match("^%-%-.-") then
+            flag_map[arg[i]] = true
+        end
+        if arg[i]:match("^%-%-globals?") or arg[i]:match("^%-%-G") then
+            for j = i + 1, #arg do
+                if not arg[j] then break end
+                if arg[j]:match("^%-%-") then break end
+                globals[arg[j]] = true
+                i = j
+            end
         end
     end
-    return x
+    return flag_map, globals
 end)()
--- temp : libs need to be inputed from cli
-local globals                = { luv = true, uv = true, inspect = true, lpeg = true }
-
 
 ---@class Module
 ---@field name string
