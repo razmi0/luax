@@ -1,20 +1,66 @@
 --(1) : cli arguments (entry point, target file)
 --
-local uv                     = require("luv")
-local inspect                = require("inspect")
+local uv                                 = require("luv")
+local inspect                            = require("inspect")
 --
-local ENTRY_POINT, OUT_POINT = arg[1], uv.cwd() .. "/" .. arg[2]
-local FORBIDDEN_REQUIRES     = { "luv", "inspect", "lpeg" }
-local top_level_requires     = {}
-local log_length_max         = 0
-local log_buffer             = {}
+local ENTRY_POINT, OUT_POINT, SRC_REMOVE = arg[1], uv.cwd() .. "/" .. arg[2], arg[3]
+local module_launcher                    = "\nreturn __modules[\"" .. ENTRY_POINT .. "\"]()"
+local FORBIDDEN_REQUIRES                 = { "luv", "uv", "inspect", "lpeg" }
+local top_level_requires                 = {}
+local log_length_max                     = 0
+local log_buffer                         = {}
+local top_level_requires_cache           = {}
+local module_cache                       = {}
+--
+
+local function require_interceptor()
+    return table.concat({
+        "local __modules = {}",
+        "local __cache   = {}",
+        "local globals = " .. inspect(FORBIDDEN_REQUIRES),
+        "local function __require(name)",
+        "if __cache[name] then",
+        "return __cache[name]",
+        "end",
+        "local found = false",
+        "local fn = __modules[name]",
+        "   if not fn then",
+        "       found = false",
+        "       for _, fruit in ipairs(globals) do ",
+        "           if fruit == name then",
+        "               found = true",
+        "print('true')",
+        "               break",
+        "           end",
+        "       end",
+        "if found == true then fn = require(name) else ",
+        "error(\"Module not found: \" .. name )",
+        "end",
+        "end",
+        "local res = fn()",
+        "__cache[name] = res",
+        "return res",
+        "end "
+    }, "\n")
+end
+
+---@param position "top"|"bottom"
+local function inject_in_buffer(position, buffer, str)
+    -- table.insert(buffer, 1, table.concat(top_level_requires, "\n"))
+    if position == "top" then
+        table.insert(buffer, 1, str)
+    else
+        buffer[#buffer + 1] = str
+    end
+end
+
 --
 
 local function log_title(modules_counter)
     print("Bundling " .. modules_counter .. " modules at : " .. "/" .. arg[2])
 end
 
----@param module Module
+---@param module {name : string, path : string, weight : number}
 local function log_add_entry(module)
     local lenght = #("--") + #module.path + #(".lua")
     if lenght > log_length_max then log_length_max = lenght end
@@ -35,35 +81,6 @@ local function log_entries(modules_weight)
     print("." .. string.rep(".", log_length_max - (#(tostring(modules_weight)))) .. " " .. modules_weight .. "ko")
 end
 
-local function remove_last_return(src)
-    local patt_ret = "%f[%w]return%f[%W]"
-    local patt_end = "%f[%w]end%f[%W]"
-
-    -- find last 'return' occurrence
-    local last_s, last_e
-    local i = 1
-    while true do
-        local s, e = src:find(patt_ret, i)
-        if not s then break end
-        last_s, last_e = s, e
-        i = e + 1
-    end
-
-    if not last_s then
-        return src
-    end
-
-    -- if there's any `end` keyword after that return, don't remove (it's inside a block)
-    local after = src:sub(last_e + 1)
-    if after:find(patt_end) then
-        return src
-    end
-
-    -- remove from that 'return' to EOF and trim trailing whitespace/newlines
-    local cleaned = src:sub(1, last_s - 1)
-    return cleaned
-end
-
 local function read(path)
     local fd = assert(uv.fs_open(path, "r", 438))
     local stat = assert(uv.fs_fstat(fd))
@@ -78,7 +95,7 @@ local function write(content, mode)
     assert(uv.fs_close(fd))
 end
 
-local top_level_requires_cache = {}
+
 local function get_requires(_content)
     local lines = {}
     local all_matches = {}
@@ -120,69 +137,92 @@ local function get_requires(_content)
     return all_matches
 end
 
-local function isolate_module(content)
-    local ctn = remove_last_return(content)
-    ctn = ctn:gsub("%s*local%s+[%w_]+%s*=%s*require%s*%(?['\"][%w%._/-]+['\"]%)?", "")
-    return ctn
+local function isolate_module(path, content)
+    -- wrap the module inside a function
+    -- name = name:gsub("%.", "/")
+
+    local function find(arr, n)
+        for _, v in ipairs(arr) do
+            if v == n then
+                return true
+            end
+        end
+        return false
+    end
+
+    content = "\n__modules[\"" .. path .. "\"] = function()\n" -- avec / et .lua
+        .. content ..
+        "\nend"
+
+    content = content:gsub(
+        "%s*local%s+([%w_]+)%s*=%s*require%s*%(?['\"]([%w%._/-]+)['\"]%)?",
+        function(var, p)
+            if find(FORBIDDEN_REQUIRES, p) then
+                return "\nlocal " .. var .. " = require(\"" .. p .. "\")" -- avec .lua
+            end
+
+            -- path = path:gsub("%.", "/")
+            -- path = path:gsub("[./]lua%s*$", "")
+            return "\nlocal " .. var .. " = __require(\"" .. p:gsub("%.", "/") .. ".lua" .. "\")" -- avec . sans .lua
+        end
+    )
+
+
+
+    return content
 end
 
 ---@return Module
-local function import_map(path, on_step)
-    local module_cache = {}
-
-    ---@return Module
-    local function create_node(n, p, c, w, imports)
-        return {
-            name = n,
-            path = p,
-            content = c,
-            weight = w,
-            imports = imports
-        }
-    end
+local function create_node(n, p, c, w, imports)
+    return {
+        name = n,
+        path = p,
+        content = c,
+        weight = w,
+        imports = imports
+    }
+end
 
 
-    local function step(_path)
+---@return Module
+local function import_map(root_path, on_step)
+    local function step(path)
         -- avoid duplication
-        if module_cache[_path] then return nil end
-        module_cache[_path] = true
+        if module_cache[path] then return nil end
+        module_cache[path] = true
 
-        local content, weight = read(_path)
-        local name = _path:match("/([^./]+).lua$")
-        local file_modules_path = get_requires(content)
+        local content, weight = read(path)
+        local name = path:match("/([^./]+).lua$")
+        local file_modulespath = get_requires(content)
 
         -- clean module content
-        content = isolate_module(content)
+        content = isolate_module(path, content)
 
-        if #file_modules_path == 0 then
-            local node = create_node(name, _path, content, weight, nil)
+        if #file_modulespath == 0 then
+            local node = create_node(name, path, content, weight, nil)
             if node then on_step(node) end
             return node
         end
 
         local imports = {}
-        for _, module_path in ipairs(file_modules_path) do
-            imports[#imports + 1] = step(module_path)
+        for _, modulepath in ipairs(file_modulespath) do
+            imports[#imports + 1] = step(modulepath)
         end
 
-        local node = create_node(name, _path, content, weight, imports)
+        local node = create_node(name, path, content, weight, imports)
         if node then on_step(node) end
         return node
     end
 
-    return step(path) or {}
+    return step(root_path) or {}
 end
-
 
 ---@param module Module
 local function bundle(module, on_entry)
     local module_content_buffer = {}
-    --
     local function populate_buffer(node)
         if not node then return end
-        --
         on_entry(node)
-        --
         if node.imports then
             for _, child in ipairs(node.imports) do
                 populate_buffer(child)
@@ -190,48 +230,38 @@ local function bundle(module, on_entry)
             end
         end
     end
-    --
     populate_buffer(module)
     module_content_buffer[#module_content_buffer + 1] = module.content
     return module_content_buffer
 end
 
-local function wrap_module(module_content)
+local function main()
+    ---@class Module
+    ---@field name string
+    ---@field path string
+    ---@field content string
+    ---@field weight integer
+    ---@field imports Module[]|nil
 
+    local modules_counter = 0
+    local modules_weight = 0
+    ---@type Module
+    local modules = import_map(ENTRY_POINT,
+        function(node)
+            modules_counter = modules_counter + 1
+            modules_weight = modules_weight + node.weight
+        end
+    )
+    local module_buffer = bundle(modules, function(node) log_add_entry(node) end)
+    inject_in_buffer("bottom", module_buffer, module_launcher)
+    inject_in_buffer("top", module_buffer, require_interceptor())
+    log_title(modules_counter)
+    log_entries(modules_weight)
+    if SRC_REMOVE == "--src-remove" then
+        print(inspect(module_cache))
+        -- uv.fs_unlink(path, [callback])
+    end
+    write(table.concat(module_buffer, ""), "w")
 end
 
-
-
----@class Module
----@field name string
----@field path string
----@field content string
----@field weight integer
----@field imports Module[]|nil
-
-
-local modules_counter = 0
-local modules_weight = 0
-
----@type Module
-local modules = import_map(ENTRY_POINT,
-    function(node)
-        modules_counter = modules_counter + 1
-        modules_weight = modules_weight + node.weight
-    end
-)
---
-local module_buffer = bundle(modules,
-    function(node)
-        log_add_entry(node)
-    end
-)
-table.insert(module_buffer, 1, table.concat(top_level_requires, "\n"))
---
-log_title(modules_counter)
-log_entries(modules_weight)
---
-write(
-    (table.concat(module_buffer, ""))
-    , "w"
-)
+main()
