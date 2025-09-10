@@ -1,12 +1,11 @@
 --(1) : cli arguments (entry point, target file)
 --
-local uv                     = require("luv")
-local inspect                = require("inspect")
+local uv                              = require("luv")
+local inspect                         = require("inspect")
 --
-local ENTRY_POINT, OUT_POINT = arg[1], uv.cwd() .. "/" .. arg[2]
-local flags, globals         = (function()
-    local flag_map = {}
-    local globals = {}
+local ENTRY_POINT, OUT_POINT          = arg[1], uv.cwd() .. "/" .. arg[2]
+local flags, globals, do_not_rm_paths = (function()
+    local flag_map, globals, do_not_rm_paths = {}, {}, {}
     for i = 3, #arg do
         if arg[i]:match("^%-%-.-") then
             flag_map[arg[i]] = true
@@ -19,8 +18,16 @@ local flags, globals         = (function()
                 i = j
             end
         end
+        if arg[i]:match("^%-%-remove%-source") or arg[i]:match("^%-%-R") then
+            for j = i + 1, #arg do
+                if not arg[j] then break end
+                if arg[j]:match("^%-%-") then break end
+                do_not_rm_paths[#do_not_rm_paths + 1] = arg[j]
+                i = j
+            end
+        end
     end
-    return flag_map, globals
+    return flag_map, globals, do_not_rm_paths
 end)()
 
 ---@class Module
@@ -76,7 +83,7 @@ local c = { entries = {}, max_cols = 0 }
 function c:log(type, xx)
     if type == "head" then
         print("Bundling " .. xx .. " modules at : " .. "/" .. arg[2])
-    elseif type == "body" and flags["--verbose"] then
+    elseif type == "body" and (flags["--verbose"] or flags["--V"]) then
         for _, fn in ipairs(self.entries) do
             print(fn())
         end
@@ -274,8 +281,14 @@ local function main()
     c:log("body")
     c:log("footer", modules.weight)
     --
-    if flags["--rm-source"] then
-        -- print(inspect(modules.paths))
+    if flags["--remove-source"] or flags["--R"] then
+        for path, _ in pairs(modules.paths.locals) do
+            for _, pattern in ipairs(do_not_rm_paths) do
+                if path:match(pattern) then
+                    assert(uv.fs_unlink(path), "Failed to remove source file: " .. path)
+                end
+            end
+        end
     end
     write(table.concat(module_buffer, ""), "w")
 end
