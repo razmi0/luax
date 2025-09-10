@@ -1,23 +1,44 @@
 --(1) : cli arguments (entry point, target file)
 --
-local uv                                 = require("luv")
-local inspect                            = require("inspect")
+local uv                     = require("luv")
+local inspect                = require("inspect")
 --
-local ENTRY_POINT, OUT_POINT, SRC_REMOVE = arg[1], uv.cwd() .. "/" .. arg[2], arg[3]
-local module_launcher                    = "\nreturn __modules[\"" .. ENTRY_POINT .. "\"]()"
-local FORBIDDEN_REQUIRES                 = { "luv", "uv", "inspect", "lpeg" }
-local top_level_requires                 = {}
-local log_length_max                     = 0
-local log_buffer                         = {}
-local top_level_requires_cache           = {}
-local module_cache                       = {}
---
+local ENTRY_POINT, OUT_POINT = arg[1], uv.cwd() .. "/" .. arg[2]
+local flags                  = (function()
+    local x = {}
+    for i = 3, #arg do
+        if arg[i]:match("^%-%-") then
+            x[arg[i]] = true
+        end
+    end
+    return x
+end)()
+-- temp : libs need to be inputed from cli
+local globals                = { luv = true, uv = true, inspect = true, lpeg = true }
+
+
+---@class Module
+---@field name string
+---@field path string
+---@field content string
+---@field weight integer
+---@field imports Module[]|nil
+
+---@class Modules
+---@field root Module
+---@field count integer
+---@field weight integer
+---@field paths { locals : table<string, true>, globals : table<string, true> }
 
 local function require_interceptor()
+    local keys = {}
+    for k, _ in pairs(globals) do
+        keys[#keys + 1] = k
+    end
     return table.concat({
         "local __modules = {}",
         "local __cache   = {}",
-        "local globals = " .. inspect(FORBIDDEN_REQUIRES),
+        "local globals = " .. inspect(keys),
         "local function __require(name)",
         "if __cache[name] then",
         "return __cache[name]",
@@ -43,42 +64,33 @@ local function require_interceptor()
         "end "
     }, "\n")
 end
-
----@param position "top"|"bottom"
-local function inject_in_buffer(position, buffer, str)
-    -- table.insert(buffer, 1, table.concat(top_level_requires, "\n"))
-    if position == "top" then
-        table.insert(buffer, 1, str)
-    else
-        buffer[#buffer + 1] = str
+--
+local c = { entries = {}, max_cols = 0 }
+---@param type "head"|"body"|"footer"
+function c:log(type, xx)
+    if type == "head" then
+        print("Bundling " .. xx .. " modules at : " .. "/" .. arg[2])
+    elseif type == "body" and flags["--verbose"] then
+        for _, fn in ipairs(self.entries) do
+            print(fn())
+        end
+    elseif type == "footer" then
+        print("." .. string.rep(".", self.max_cols - (#(tostring(xx)))) .. " " .. xx .. "ko")
     end
 end
 
---
-
-local function log_title(modules_counter)
-    print("Bundling " .. modules_counter .. " modules at : " .. "/" .. arg[2])
-end
-
----@param module {name : string, path : string, weight : number}
-local function log_add_entry(module)
-    local lenght = #("--") + #module.path + #(".lua")
-    if lenght > log_length_max then log_length_max = lenght end
-    log_buffer[#log_buffer + 1] = function()
+---@param node {name : string, path : string, weight : number}
+function c:push(node)
+    local lenght = #("--") + #node.path + #(".lua")
+    if lenght > self.max_cols then self.max_cols = lenght end
+    self.entries[#self.entries + 1] = function()
         return
             "--" ..
-            module.path:gsub(module.name .. ".lua", "") ..
-            "\27[38;5;250m" .. module.name .. ".lua" .. "\27[0m" ..
-            string.rep(".", log_length_max - lenght) ..
-            " " .. module.weight .. "ko"
+            node.path:gsub(node.name .. ".lua", "") ..
+            "\27[38;5;250m" .. node.name .. ".lua" .. "\27[0m" ..
+            string.rep(".", self.max_cols - lenght) ..
+            " " .. node.weight .. "ko"
     end
-end
-
-local function log_entries(modules_weight)
-    for _, fn in ipairs(log_buffer) do
-        print(fn())
-    end
-    print("." .. string.rep(".", log_length_max - (#(tostring(modules_weight)))) .. " " .. modules_weight .. "ko")
 end
 
 local function read(path)
@@ -95,7 +107,6 @@ local function write(content, mode)
     assert(uv.fs_close(fd))
 end
 
-
 local function get_requires(_content)
     local lines = {}
     local all_matches = {}
@@ -104,16 +115,16 @@ local function get_requires(_content)
         return line:match("^%s*local%s+([%w_]+)%s*=%s*require%s*%([\"\'](.+)[\"\']%)%s*$")
     end
 
+    local top_level_requires       = {}
+    local top_level_requires_cache = {}
     local function evaluate_require(_path, _name)
-        for _, lib in ipairs(FORBIDDEN_REQUIRES) do
-            if _path == lib then
-                if not top_level_requires_cache[_name] then
-                    top_level_requires[#top_level_requires + 1] = "local " ..
-                        _name .. " = require(\"" .. _path .. "\")"
-                    top_level_requires_cache[_name] = true
-                end
-                return true
+        if globals[_path] then
+            if not top_level_requires_cache[_name] then
+                top_level_requires[#top_level_requires + 1] = "local " ..
+                    _name .. " = require(\"" .. _path .. "\")"
+                top_level_requires_cache[_name] = true
             end
+            return true
         end
     end
 
@@ -140,16 +151,6 @@ end
 local function isolate_module(path, content)
     -- wrap the module inside a function
     -- name = name:gsub("%.", "/")
-
-    local function find(arr, n)
-        for _, v in ipairs(arr) do
-            if v == n then
-                return true
-            end
-        end
-        return false
-    end
-
     content = "\n__modules[\"" .. path .. "\"] = function()\n" -- avec / et .lua
         .. content ..
         "\nend"
@@ -157,7 +158,7 @@ local function isolate_module(path, content)
     content = content:gsub(
         "%s*local%s+([%w_]+)%s*=%s*require%s*%(?['\"]([%w%._/-]+)['\"]%)?",
         function(var, p)
-            if find(FORBIDDEN_REQUIRES, p) then
+            if globals[p] then
                 return "\nlocal " .. var .. " = require(\"" .. p .. "\")" -- avec .lua
             end
 
@@ -173,23 +174,32 @@ local function isolate_module(path, content)
 end
 
 ---@return Module
-local function create_node(n, p, c, w, imports)
+local function create_node(n, p, ctn, w, imports)
     return {
         name = n,
         path = p,
-        content = c,
+        content = ctn,
         weight = w,
         imports = imports
     }
 end
 
 
----@return Module
-local function import_map(root_path, on_step)
+---@return Modules
+local function create_modules(root_path)
+    --
+    local module_paths    = {}
+    local modules_counter = 0
+    local modules_weight  = 0
+    local function on_step(node)
+        modules_counter = modules_counter + 1
+        modules_weight = modules_weight + node.weight
+    end
+    --
     local function step(path)
         -- avoid duplication
-        if module_cache[path] then return nil end
-        module_cache[path] = true
+        if module_paths[path] then return nil end
+        module_paths[path] = true
 
         local content, weight = read(path)
         local name = path:match("/([^./]+).lua$")
@@ -214,54 +224,68 @@ local function import_map(root_path, on_step)
         return node
     end
 
-    return step(root_path) or {}
+    return {
+        root = step(root_path) or {},
+        count = modules_counter,
+        weight = modules_weight,
+        paths = { locals = module_paths, globals = globals }
+    }
 end
 
----@param module Module
-local function bundle(module, on_entry)
-    local module_content_buffer = {}
+---@param root Module
+---@param cbs { visit_node:fun(node:Module), visit_end:fun(contents:string[]) }
+---@return string[]
+local function bundle(root, cbs)
+    local contents = {}
     local function populate_buffer(node)
         if not node then return end
-        on_entry(node)
+        cbs.visit_node(node)
         if node.imports then
             for _, child in ipairs(node.imports) do
                 populate_buffer(child)
-                module_content_buffer[#module_content_buffer + 1] = child.content
+                contents[#contents + 1] = child.content
             end
         end
     end
-    populate_buffer(module)
-    module_content_buffer[#module_content_buffer + 1] = module.content
-    return module_content_buffer
+    populate_buffer(root)
+    contents[#contents + 1] = root.content
+    cbs.visit_end(contents)
+    return contents
 end
 
 local function main()
-    ---@class Module
-    ---@field name string
-    ---@field path string
-    ---@field content string
-    ---@field weight integer
-    ---@field imports Module[]|nil
-
-    local modules_counter = 0
-    local modules_weight = 0
-    ---@type Module
-    local modules = import_map(ENTRY_POINT,
-        function(node)
-            modules_counter = modules_counter + 1
-            modules_weight = modules_weight + node.weight
+    local module_launcher = "\nreturn __modules[\"" .. ENTRY_POINT .. "\"]()"
+    local modules         = create_modules(ENTRY_POINT)
+    local module_buffer   = bundle(modules.root, {
+        visit_node = function(node) c:push(node) end,
+        visit_end = function(buffer)
+            table.insert(buffer, module_launcher)
+            table.insert(buffer, 1, require_interceptor())
         end
-    )
-    local module_buffer = bundle(modules, function(node) log_add_entry(node) end)
-    inject_in_buffer("bottom", module_buffer, module_launcher)
-    inject_in_buffer("top", module_buffer, require_interceptor())
-    log_title(modules_counter)
-    log_entries(modules_weight)
-    if SRC_REMOVE == "--src-remove" then
-        print(inspect(module_cache))
-        -- uv.fs_unlink(path, [callback])
+    })
+    --
+    c:log("head", modules.count)
+    c:log("body")
+    c:log("footer", modules.weight)
+    --
+    if flags["--rm-source"] then
+        -- print(inspect(modules.paths))
     end
     write(table.concat(module_buffer, ""), "w")
 end
+
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
 
 main()
