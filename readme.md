@@ -1,5 +1,36 @@
 # Luax
 
+## Feature
+
+- [x] : luax transpiler
+- [x] : agnostic bundler
+- [x] : watcher
+
+## Usage
+
+Two co-working processes :
+
+*./lib/luax/dev.lua* :
+
+- watch ./src and transpile using luax lib bundle
+- trigger luax src bundle
+
+```bash
+luajit dev_bundle.lua
+```
+
+---
+
+*./dev_bundle.lua* :
+
+- watch ./build and bundle luax to _bundle.lua
+
+```bash
+luajit lib/luax/dev.lua
+```
+
+## Inspiration
+
 ```js
 
 import { defineConfig } from 'vite'
