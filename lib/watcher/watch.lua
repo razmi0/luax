@@ -51,7 +51,7 @@ function Watch.new(config)
     }, Watch)
 end
 
----@param event "change"|"error"|"start"
+---@param event "change"|"error"|"start"|"rename"|"delete"|"create"
 ---@param cb function|nil
 ---@return self
 function Watch:on(event, cb)
@@ -112,9 +112,12 @@ end
 
 function Watch:run()
     local timer_debouncer, timer_start = nil, uv.new_timer()
-    local on_err = self.events["error"]
-    local on_change = self.events["change"]
-    local on_start = self.events["start"]
+    local on_err                       = self.events["error"]
+    local on_change                    = self.events["change"]
+    local on_start                     = self.events["start"]
+    local on_rename                    = self.events["rename"]
+    local on_create                    = self.events["create"]
+    local on_delete                    = self.events["delete"]
 
     local function debouncer(cb, delay)
         if timer_debouncer then uv.timer_stop(timer_debouncer) end
@@ -136,24 +139,30 @@ function Watch:run()
 
     -- watcher
     for i = 1, #self.paths, 1 do
+        local path = self.paths[i]
         local ev = uv.new_fs_event()
 
         -- at start
-        uv.timer_start(timer_start, 0, 0, function()
-            uv.timer_stop(timer_start)
-            uv.close(timer_start)
-            on_start(nil, self.paths[i])
-        end)
+        if on_start then
+            uv.timer_start(timer_start, 0, 0, function()
+                uv.timer_stop(timer_start)
+                uv.close(timer_start)
+                on_start(nil, path)
+            end)
+        end
 
-        ev:start(self.paths[i], { recursive = self.recursive },
+        ev:start(path, { recursive = self.recursive },
             function(err, filename, events)
                 for _, ignore_file in ipairs(self.ignore_file_list) do
                     if filename == ignore_file then
                         return
                     end
                 end
+
                 if err and on_err then
-                    on_err(err, filename)
+                    debouncer(function()
+                        on_err(err, filename)
+                    end, 50)
                     return
                 end
 
@@ -161,6 +170,31 @@ function Watch:run()
                     debouncer(function()
                         on_change(err, filename)
                     end, 50)
+                end
+
+                -- not recursive
+                if events.rename then
+                    if on_rename then
+                        debouncer(function()
+                            on_rename(nil, filename)
+                        end, 50)
+                    end
+
+                    uv.fs_stat(filename, function(stat_err, stat_res)
+                        if stat_err then
+                            if on_delete then
+                                debouncer(function()
+                                    on_delete(nil, filename)
+                                end, 50)
+                            end
+                        else
+                            if on_create then
+                                debouncer(function()
+                                    on_create(nil, filename)
+                                end, 50)
+                            end
+                        end
+                    end)
                 end
             end
         )
