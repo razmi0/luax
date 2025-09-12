@@ -9,7 +9,7 @@ local Fs = require("lib.luax.utils.fs")
 ---@param config TranspilerConfig
 ---@param on_file fun(file : File): emitted: string[]| nil
 local function build(config, on_file)
-    local fs = Fs.new(uv)
+    local fs = Fs.new()
     assert(fs:has_subdir(config.root), "No source directory found : " .. config.root)
     --
     fs:create_dir(config.build.out_dir)
