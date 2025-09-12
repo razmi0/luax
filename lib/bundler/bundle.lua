@@ -162,22 +162,24 @@ local function get_requires(_content)
 end
 
 local function isolate_module(path, content)
-    -- wrap the module inside a function
-    -- name = name:gsub("%.", "/")
-    content = "\n__modules[\"" .. path .. "\"] = function()\n" -- avec / et .lua
+    local function normalize(_p)
+        local tmp_path = _p:match("^(.-)%.?l?u?a?$")
+        return tmp_path:gsub("%.", "/") .. ".lua"
+    end
+
+    content = "\n__modules[\"" .. normalize(path) .. "\"] = function()\n" -- avec / et .lua => normalized
         .. content ..
         "\nend"
+
+
 
     content = content:gsub(
         "%s*local%s+([%w_]+)%s*=%s*require%s*%(?['\"]([%w%._/-]+)['\"]%)?",
         function(var, p)
             if globals[p] then
-                return "\nlocal " .. var .. " = require(\"" .. p .. "\")" -- avec .lua
+                return "\nlocal " .. var .. " = require(\"" .. p .. "\")"          -- sans .lua
             end
-
-            -- path = path:gsub("%.", "/")
-            -- path = path:gsub("[./]lua%s*$", "")
-            return "\nlocal " .. var .. " = __require(\"" .. p:gsub("%.", "/") .. ".lua" .. "\")" -- avec . sans .lua
+            return "\nlocal " .. var .. " = __require(\"" .. normalize(p) .. "\")" -- avec . sans .lua
         end
     )
 
@@ -187,7 +189,7 @@ local function isolate_module(path, content)
 end
 
 ---@return Module
-local function create_node(n, p, ctn, w, imports)
+local function create_module(n, p, ctn, w, imports)
     return {
         name = n,
         path = p,
@@ -222,7 +224,7 @@ local function create_modules(root_path)
         content = isolate_module(path, content)
 
         if #file_modulespath == 0 then
-            local node = create_node(name, path, content, weight, nil)
+            local node = create_module(name, path, content, weight, nil)
             if node then on_step(node) end
             return node
         end
@@ -232,7 +234,7 @@ local function create_modules(root_path)
             imports[#imports + 1] = step(modulepath)
         end
 
-        local node = create_node(name, path, content, weight, imports)
+        local node = create_module(name, path, content, weight, imports)
         if node then on_step(node) end
         return node
     end
