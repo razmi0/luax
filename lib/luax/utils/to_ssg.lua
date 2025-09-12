@@ -1,6 +1,5 @@
 local uv = require("luv")
-local Fs = require("lib.luax.utils.fs")
-local fs = Fs.new(uv)
+local fs = require("lib.luax.utils.fs")
 
 ---@class ToSSGConfig
 ---@field entry_path string

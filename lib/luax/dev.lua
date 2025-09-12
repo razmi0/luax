@@ -1,5 +1,4 @@
 --
-local uv              = require("luv") -- hyperfine : libUv > lib lfs
 local watcher         = require("lib.watcher.watch")
 --
 
@@ -7,12 +6,11 @@ local bundle_path     = "luajit lib/luax/_bundle.lua"
 local not_bundle_path = "luajit lib/luax/transpiler/main.lua"
 
 watcher.new({
-    paths = { "./src" },
+    paths = { "./src", "./lib/luax" },
     recursive = true,
-    exec = bundle_path,
+    exec = not_bundle_path,
+    ignore = { "./lib/luax/_bundle.lua" }
 })
     :on("start")
     :on("change")
     :run()
-
-uv.run()

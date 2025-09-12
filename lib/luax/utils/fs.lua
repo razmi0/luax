@@ -1,8 +1,8 @@
+local uv = require("luv")
 local Fs = {}
 Fs.__index = Fs
 
----@param uv userdata The main libuv instance that'll be run (Fs does not call uv.run())
-function Fs.new(uv)
+function Fs.new()
     return setmetatable({
         uv = uv
     }, Fs)
@@ -113,5 +113,7 @@ function Fs:find_in(path, string)
     local content = self:read(path)
     if content:match(string) then return true end
 end
+
+uv.run()
 
 return Fs
