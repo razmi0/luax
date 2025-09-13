@@ -1,6 +1,7 @@
 --
 local uv                              = require("luv")
 local inspect                         = require("inspect")
+local normalize_path                  = require("lib.luax.utils.normalize_path")
 --
 
 local flags, globals, do_not_rm_paths = (function()
@@ -129,13 +130,9 @@ end
 
 ---@return string
 local function isolate_module(path, content)
-    local function normalize(_p)
-        local tmp_path = _p:match("^(.-)%.?l?u?a?$")
-        return tmp_path:gsub("%.", "/") .. ".lua"
-    end
     -- wrapping code and indexing module in table __modules
     -- avec / et .lua => normalized
-    content = "\n__modules[\"" .. normalize(path) .. "\"] = function()\n" .. content .. "\nend"
+    content = "\n__modules[\"" .. normalize_path(path) .. "\"] = function()\n" .. content .. "\nend"
     -- replacing require by __module reference
     content = content:gsub("%s*local%s+([%w_]+)%s*=%s*require%s*%(?['\"]([%w%._/-]+)['\"]%)?",
         function(var, p)
@@ -144,7 +141,7 @@ local function isolate_module(path, content)
                 return "\nlocal " .. var .. " = require(\"" .. p .. "\")" -- sans .lua
             end
             -- local lib ( out of __modules : __require)
-            return "\nlocal " .. var .. " = __require(\"" .. normalize(p) .. "\")" -- avec . sans .lua
+            return "\nlocal " .. var .. " = __require(\"" .. normalize_path(p) .. "\")" -- avec . sans .lua
         end
     )
 
@@ -293,7 +290,7 @@ local function bundle(config, injection)
             if module_paths[path] then return nil end
             module_paths[path] = true
 
-            local content, weight = injection.reader(path)
+            local content, weight = injection.reader((path))
             local name = path:match("/([^./]+).lua$")
             if not content then
                 return create_module(name, path)
