@@ -1,6 +1,7 @@
-local luax_helpers  = require("lib.luax.transpiler.luax_helpers")
-local format_header = require("lib.luax.utils.format_header")
-local emit          = require("lib/luax/transpiler/emit")
+local luax_helpers   = require("lib.luax.transpiler.luax_helpers")
+local format_header  = require("lib.luax.utils.format_header")
+local emit           = require("lib/luax/transpiler/emit")
+local normalize_path = require("lib.luax.utils.normalize_path")
 
 
 
@@ -19,6 +20,7 @@ local function emitter(ctx)
         "REPO: " .. config.headers.repo_link,
     })
 
+    -- render function reference in module
     emitted[#emitted + 1] =
         ("local %s = require(%q)\n"):format(config.render_function_name, config.render_function_path)
 

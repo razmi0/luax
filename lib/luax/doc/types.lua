@@ -1,7 +1,7 @@
 ---@class TranspilerConfig
 ---@field headers HeaderTranspilerConfig
 ---@field luax_file_extension string
----@field build { out_dir : string, no_emit : boolean, target_file_extension : string }
+---@field build BuildOptions
 ---@field root string                       -- path to luax files
 ---@field render_function_name string       -- the render function name
 ---@field render_function_path string       -- path to the render function
@@ -10,7 +10,7 @@
 
 ---@class PartialTranspilerConfig
 ---@field root string|nil
----@field build { out_dir : string|nil, no_emit : boolean|nil, target_file_extension : string|nil }| nil -- path to transpiled directory
+---@field build PartialBuildOptions
 ---@field render_function_name string|nil
 ---@field render_function_path string|nil
 ---@field plugins TranspilerPlugin[]|nil
@@ -47,3 +47,19 @@
 ---@field text string|nil
 ---@field expr LuaxAstNode[]|nil
 ---@field children LuaxAstNode[]|nil
+
+---@class BuildOptions
+---@field bundle boolean
+---@field root string
+---@field out_dir string
+---@field out_file string
+---@field no_emit boolean
+---@field target_file_extension string
+
+---@class PartialBuildOptions
+---@field bundle boolean|nil
+---@field root string|nil
+---@field out_file string|nil
+---@field out_dir string|nil
+---@field no_emit boolean|nil
+---@field target_file_extension string|nil

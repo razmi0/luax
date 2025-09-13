@@ -10,6 +10,6 @@ require("lib.watcher.watch").new({
     :on("error", function(err, filename)
         print(err, filename)
     end)
+    :on("start")
     :on("change")
-    :on("create")
     :run()

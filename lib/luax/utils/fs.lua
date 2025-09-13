@@ -94,6 +94,7 @@ function Fs:create_dir(path)
 end
 
 -- sync
+---@return string
 function Fs:read(path)
     local fd = assert(self.uv.fs_open(path, "r", 438))
     local stat = assert(self.uv.fs_fstat(fd))

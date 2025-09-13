@@ -17,6 +17,9 @@ local function define_config(user_config)
         render_function_path = "lib.luax.transpiler.render",
         root                 = "src",
         build                = {
+            bundle = true,
+            root = "build/main.lua",
+            out_file = "build/_bundle.lua",
             out_dir = "build",
             no_emit = false,
             target_file_extension = ".lua",

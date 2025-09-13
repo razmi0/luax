@@ -1,31 +1,40 @@
---(1) : cli arguments (entry point, target file)
 --
 local uv                              = require("luv")
 local inspect                         = require("inspect")
 --
-local ENTRY_POINT, OUT_POINT          = arg[1], uv.cwd() .. "/" .. arg[2]
+
 local flags, globals, do_not_rm_paths = (function()
     local flag_map, globals, do_not_rm_paths = {}, {}, {}
-    for i = 3, #arg do
+    local on_flag_args = function(start, str, callback)
+        local targets = {
+            global = function(s)
+                return s:match("^%-%-globals?") or s:match("^%-%-G")
+            end,
+            rm_src = function(s)
+                return s:match("^%-%-remove%-source") or s:match("^%-%-R")
+            end
+        }
+        for k, fn in pairs(targets) do
+            if fn(str) then
+                for j = start + 1, #arg do
+                    if not arg[j] then return j end
+                    if arg[j]:match("^%-%-") then return j end
+                    callback(k, arg[j])
+                end
+            end
+        end
+    end
+    for i = 1, #arg do
         if arg[i]:match("^%-%-.-") then
             flag_map[arg[i]] = true
         end
-        if arg[i]:match("^%-%-globals?") or arg[i]:match("^%-%-G") then
-            for j = i + 1, #arg do
-                if not arg[j] then break end
-                if arg[j]:match("^%-%-") then break end
-                globals[arg[j]] = true
-                i = j
+        on_flag_args(i, arg[i], function(type, _arg)
+            if type == "global" then
+                globals[_arg] = true
+            elseif type == "rm_src" then
+                do_not_rm_paths[#do_not_rm_paths + 1] = _arg
             end
-        end
-        if arg[i]:match("^%-%-remove%-source") or arg[i]:match("^%-%-R") then
-            for j = i + 1, #arg do
-                if not arg[j] then break end
-                if arg[j]:match("^%-%-") then break end
-                do_not_rm_paths[#do_not_rm_paths + 1] = arg[j]
-                i = j
-            end
-        end
+        end)
     end
     return flag_map, globals, do_not_rm_paths
 end)()
@@ -41,7 +50,7 @@ end)()
 ---@field root Module
 ---@field count integer
 ---@field weight integer
----@field paths { locals : table<string, true>, globals : table<string, true> }
+---@field meta { paths : { locals : table<string, true>, globals : table<string, true> } }
 
 local function require_interceptor()
     local keys = {}
@@ -49,9 +58,7 @@ local function require_interceptor()
         keys[#keys + 1] = k
     end
     return table.concat({
-        "local __modules = {}",
-        "local __cache   = {}",
-        "local globals = " .. inspect(keys),
+        "local __modules, __cache, globals  = {}, {}," .. inspect(keys),
         "local function __require(name)",
         "if __cache[name] then",
         "return __cache[name]",
@@ -75,50 +82,9 @@ local function require_interceptor()
         "__cache[name] = res",
         "return res",
         "end "
-    }, "\n")
+    }, " ")
 end
 --
-local c = { entries = {}, max_cols = 0 }
----@param type "head"|"body"|"footer"
-function c:log(type, xx)
-    if type == "head" then
-        print("Bundling " .. xx .. " modules at : " .. "/" .. arg[2])
-    elseif type == "body" and (flags["--verbose"] or flags["--V"]) then
-        for _, fn in ipairs(self.entries) do
-            print(fn())
-        end
-    elseif type == "footer" then
-        print("." .. string.rep(".", self.max_cols - (#(tostring(xx)))) .. " " .. xx .. "ko")
-    end
-end
-
----@param node {name : string, path : string, weight : number}
-function c:push(node)
-    local lenght = #("--") + #node.path + #(".lua")
-    if lenght > self.max_cols then self.max_cols = lenght end
-    self.entries[#self.entries + 1] = function()
-        return
-            "--" ..
-            node.path:gsub(node.name .. ".lua", "") ..
-            "\27[38;5;250m" .. node.name .. ".lua" .. "\27[0m" ..
-            string.rep(".", self.max_cols - lenght) ..
-            " " .. node.weight .. "ko"
-    end
-end
-
-local function read(path)
-    local fd = assert(uv.fs_open(path, "r", 438))
-    local stat = assert(uv.fs_fstat(fd))
-    local content = assert(uv.fs_read(fd, stat.size, 0))
-    assert(uv.fs_close(fd))
-    return content, stat.size / 1000
-end
-
-local function write(content, mode)
-    local fd = assert(uv.fs_open(OUT_POINT, mode, 420))
-    assert(uv.fs_write(fd, content))
-    assert(uv.fs_close(fd))
-end
 
 local function get_requires(_content)
     local lines = {}
@@ -161,100 +127,39 @@ local function get_requires(_content)
     return all_matches
 end
 
+---@return string
 local function isolate_module(path, content)
     local function normalize(_p)
         local tmp_path = _p:match("^(.-)%.?l?u?a?$")
         return tmp_path:gsub("%.", "/") .. ".lua"
     end
-
-    content = "\n__modules[\"" .. normalize(path) .. "\"] = function()\n" -- avec / et .lua => normalized
-        .. content ..
-        "\nend"
-
-
-
-    content = content:gsub(
-        "%s*local%s+([%w_]+)%s*=%s*require%s*%(?['\"]([%w%._/-]+)['\"]%)?",
+    -- wrapping code and indexing module in table __modules
+    -- avec / et .lua => normalized
+    content = "\n__modules[\"" .. normalize(path) .. "\"] = function()\n" .. content .. "\nend"
+    -- replacing require by __module reference
+    content = content:gsub("%s*local%s+([%w_]+)%s*=%s*require%s*%(?['\"]([%w%._/-]+)['\"]%)?",
         function(var, p)
             if globals[p] then
-                return "\nlocal " .. var .. " = require(\"" .. p .. "\")"          -- sans .lua
+                -- external lib ( out of __modules : require)
+                return "\nlocal " .. var .. " = require(\"" .. p .. "\")" -- sans .lua
             end
+            -- local lib ( out of __modules : __require)
             return "\nlocal " .. var .. " = __require(\"" .. normalize(p) .. "\")" -- avec . sans .lua
         end
     )
 
-
-
     return content
 end
 
----@return Module
-local function create_module(n, p, ctn, w, imports)
-    return {
-        name = n,
-        path = p,
-        content = ctn,
-        weight = w,
-        imports = imports
-    }
-end
-
-
----@return Modules
-local function create_modules(root_path)
-    --
-    local module_paths    = {}
-    local modules_counter = 0
-    local modules_weight  = 0
-    local function on_step(node)
-        modules_counter = modules_counter + 1
-        modules_weight = modules_weight + node.weight
-    end
-    --
-    local function step(path)
-        -- avoid duplication
-        if module_paths[path] then return nil end
-        module_paths[path] = true
-
-        local content, weight = read(path)
-        local name = path:match("/([^./]+).lua$")
-        local file_modulespath = get_requires(content)
-
-        -- clean module content
-        content = isolate_module(path, content)
-
-        if #file_modulespath == 0 then
-            local node = create_module(name, path, content, weight, nil)
-            if node then on_step(node) end
-            return node
-        end
-
-        local imports = {}
-        for _, modulepath in ipairs(file_modulespath) do
-            imports[#imports + 1] = step(modulepath)
-        end
-
-        local node = create_module(name, path, content, weight, imports)
-        if node then on_step(node) end
-        return node
-    end
-
-    return {
-        root = step(root_path) or {},
-        count = modules_counter,
-        weight = modules_weight,
-        paths = { locals = module_paths, globals = globals }
-    }
-end
-
+-- serialize modules
 ---@param root Module
----@param cbs { visit_node:fun(node:Module), visit_end:fun(contents:string[]) }
+---@param cbs { visit_node:(fun(node:Module):Module), visit_end:fun(contents:string[]):contents:string[] }
 ---@return string[]
-local function bundle(root, cbs)
+local function serialize(root, cbs)
     local contents = {}
     local function populate_buffer(node)
         if not node then return end
-        cbs.visit_node(node)
+        node = cbs.visit_node(node)
         if node.imports then
             for _, child in ipairs(node.imports) do
                 populate_buffer(child)
@@ -268,45 +173,189 @@ local function bundle(root, cbs)
     return contents
 end
 
-local function main()
-    local module_launcher = "\nreturn __modules[\"" .. ENTRY_POINT .. "\"]()"
-    local modules         = create_modules(ENTRY_POINT)
-    local module_buffer   = bundle(modules.root, {
-        visit_node = function(node) c:push(node) end,
-        visit_end = function(buffer)
-            table.insert(buffer, module_launcher)
-            table.insert(buffer, 1, require_interceptor())
-        end
-    })
-    --
-    c:log("head", modules.count)
-    c:log("body")
-    c:log("footer", modules.weight)
-    --
-    if flags["--remove-source"] or flags["--R"] then
-        for path, _ in pairs(modules.paths.locals) do
-            for _, pattern in ipairs(do_not_rm_paths) do
-                if path:match(pattern) then
-                    assert(uv.fs_unlink(path), "Failed to remove source file: " .. path)
-                end
+local function remove_src_files(modules)
+    for path, _ in pairs(modules.meta.paths.locals) do
+        for _, pattern in ipairs(do_not_rm_paths) do
+            if path:match(pattern) then
+                local fd = uv.fs_unlink(path)
+                if not fd then return end
+                uv.fs_unlink(path)
             end
         end
     end
-    write(table.concat(module_buffer, ""), "w")
 end
 
---
---
---
---
---
---
---
---
---
---
---
---
---
+local function logger()
+    local entries, max_cols = {}, 0
 
-main()
+    ---@param node {name : string, path : string, weight : number}
+    local function push(node)
+        local prefix = "- "
+        local length = #prefix + #node.path + #(".lua") + 1
+        if length > max_cols then max_cols = length end
+        entries[#entries + 1] = function()
+            local function trail()
+                if node.weight == 0 then return prefix end
+                return node.weight .. "ko"
+            end
+            return
+                prefix ..
+                node.path:gsub(node.name .. ".lua", "") ..
+                "\27[38;5;250m" .. node.name .. ".lua" .. "\27[0m" ..
+                string.rep(".", max_cols - length) ..
+                " " .. trail()
+        end
+    end
+
+    ---@param type "head"|"body"|"footer"
+    local function log(type, mods)
+        if type == "head" then
+            print("Bundling " .. mods.count .. " modules at : " .. (mods.meta.target or "unknown"))
+        elseif type == "body" and (flags["--verbose"] or flags["--V"]) then
+            for _, fn in ipairs(entries) do
+                print(fn())
+            end
+        elseif type == "footer" then
+            print("." .. string.rep(".", max_cols - (#tostring(mods.weight))) .. " " .. mods.weight .. "ko")
+        end
+    end
+
+    return {
+        push = push,
+        log = log,
+    }
+end
+
+local function default_reader(path)
+    local fd = uv.fs_open(path, "r", 438)
+    if not fd then
+        print("\27[38;5;208mNot found : \27[0m" .. path)
+        return
+    end
+    local stat = assert(uv.fs_fstat(fd))
+    local content = assert(uv.fs_read(fd, stat.size, 0))
+    assert(uv.fs_close(fd))
+    return content, stat.size / 1000
+end
+
+local function default_writer(content, mode, output)
+    local fd = assert(uv.fs_open(output, mode, 420))
+    assert(uv.fs_write(fd, content))
+    assert(uv.fs_close(fd))
+end
+
+---@alias Reader fun(path: string): string
+---@alias Writer fun(content: string, mode: "a"|"w", path: string): nil
+
+---@class Injection
+---@field reader Reader|nil
+---@field writer Writer|nil
+
+---@class BundlerConfig
+---@field in_file string
+---@field out_file string
+
+---@params config TranspilerConfig["build"]
+---@params injection Injection|nil
+---@params root_path string
+---@params out_path string
+local function bundle(config, injection)
+    --
+    --
+    --
+    injection.reader = (injection and injection.reader) or default_reader
+    injection.writer = (injection and injection.writer) or default_writer
+    --
+    --
+    --
+    ---@return Modules
+    local function create_modules()
+        --
+        local module_paths    = {}
+        local modules_counter = 0
+        local modules_weight  = 0
+        ---@return Module
+        local function create_module(n, p, ctn, weight, imports)
+            local w = weight or 0
+            modules_counter = modules_counter + 1
+            modules_weight = modules_weight + w
+            return {
+                name = n,                -- underlying var
+                path = p,                -- underlying path
+                content = ctn or "",     -- file content
+                weight = w,              -- xxx ko
+                imports = imports or nil -- childs
+            }
+        end
+        --
+        local function step(path)
+            -- avoid duplication
+            if module_paths[path] then return nil end
+            module_paths[path] = true
+
+            local content, weight = injection.reader(path)
+            local name = path:match("/([^./]+).lua$")
+            if not content then
+                return create_module(name, path)
+            end
+            local child_paths = get_requires(content)
+
+            content = isolate_module(path, content)
+
+            if #child_paths == 0 then
+                return create_module(name, path, content, weight)
+            end
+
+            local imports = {}
+            for _, modulepath in ipairs(child_paths) do
+                imports[#imports + 1] = step(modulepath)
+            end
+
+            return create_module(name, path, content, weight, imports)
+        end
+
+        return {
+            root = step(config.root) or {},
+            count = modules_counter,
+            weight = modules_weight,
+            meta = {
+                paths = { locals = module_paths, globals = globals }
+            },
+        }
+    end
+    --
+    --
+    --
+    local module_launcher  = "\nreturn __modules[\"" .. config.root .. "\"]()"
+    local _, modules       = logger(), create_modules()
+    local module_buffer    = serialize(modules.root, {
+        visit_node = function(node)
+            _.push(node)
+            return node
+        end,
+        visit_end = function(buffer)
+            table.insert(buffer, module_launcher)
+            table.insert(buffer, 1, require_interceptor())
+            return buffer
+        end
+    })
+    --
+    --
+    modules.meta["target"] = config.out_file
+    --
+    --
+    _.log("head", modules)
+    _.log("body")
+    _.log("footer", modules)
+    --
+    --
+    if flags["--remove-source"] or flags["--R"] then
+        remove_src_files(modules)
+    end
+
+    injection.writer(table.concat(module_buffer, ""), "w", config.out_file)
+    uv.run()
+end
+
+
+return bundle
