@@ -1,4 +1,3 @@
-local uv = require("luv")
 local Fs = require("lib.luax.utils.fs")
 local bundle = require("lib.bundler.bundle")
 local normalize_path = require("lib.luax.utils.normalize_path")
@@ -60,7 +59,9 @@ local function build(config, on_file)
     transpiled[render_function_path] = render_function_content
 
     bundle(config.build, {
-        reader = function(path) return transpiled[path], (#transpiled[path] / 1000) end
+        reader = function(path)
+            return transpiled[path], (#transpiled[path] / 1000)
+        end
     })
 end
 
