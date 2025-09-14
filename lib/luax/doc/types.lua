@@ -7,6 +7,17 @@
 ---@field render_function_path string       -- path to the render function
 ---@field plugins TranspilerPlugin[]|nil    -- plugins array
 ---@field alias { [string] : string }| nil  -- require("<alias>...") across luax files
+---@field cmd CmdOptions
+
+---@class CmdOptions
+---@field flags { [string] : boolean }
+---@field globals string[]
+---@field rm_paths string[]
+
+---@class PartialCmdOptions
+---@field flags { [string] : boolean }|nil
+---@field globals string[]|nil
+---@field rm_paths string[]|nil
 
 ---@class PartialTranspilerConfig
 ---@field root string|nil
@@ -14,8 +25,11 @@
 ---@field render_function_name string|nil
 ---@field render_function_path string|nil
 ---@field plugins TranspilerPlugin[]|nil
+---@field alias { [string] : string }|nil
+---@field cmd PartialCmdOptions|nil
 
 ---@class HeaderTranspilerConfig
+---@field enabled boolean
 ---@field transpiler_version string
 ---@field licence string
 ---@field author string
