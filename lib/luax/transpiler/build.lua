@@ -11,6 +11,11 @@ local Logger = require("lib.luax.utils.logger")
 ---@param on_source_file fun(file : File): emitted: string[]| nil
 local function build(config, on_source_file)
     if config.build.no_emit then return end
+    local file_count, files_weight, fs, transpiled, to_K = 0, 0, Fs.new(), {}, function(a) return a / 1000 end
+    if config.build.empty_out_dir then
+        fs:clear("/" .. config.build.out_dir)
+    end
+
     --
     local _ = Logger({
         suffix = "",
@@ -20,7 +25,7 @@ local function build(config, on_source_file)
         flags = config.cmd.flags,
     })
     --
-    local file_count, files_weight, fs, transpiled, to_K = 0, 0, Fs.new(), {}, function(a) return a / 1000 end
+
     local function update_stats(file)
         file_count = file_count + 1
         files_weight = files_weight + file.weight
