@@ -1,5 +1,5 @@
 local Fs = require("luax.utils.fs")
-local bundle = require("luax.bundler.bundle")
+local bundle = require("luax.bundle")
 local normalize_path = require("luax.utils.normalize_path")
 local Logger = require("luax.utils.logger")
 
