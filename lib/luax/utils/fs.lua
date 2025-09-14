@@ -40,6 +40,51 @@ function Fs:list(path)
     return elements
 end
 
+function Fs:clear(root)
+    if not root then return end
+    root = uv.cwd() .. "/" .. root
+
+    --
+    local dirs = {}
+    local files = {}
+    --
+    local function explore(path)
+        local handle = uv.fs_opendir(path) -- uv.cwd() .. "dist"
+        if not handle then return end
+        while true do
+            local batch = uv.fs_readdir(handle)
+            if not batch then
+                uv.fs_closedir(handle)
+                return
+            end
+            for _, e in ipairs(batch) do
+                local new_path = path .. "/" .. e.name
+                if e.type == "directory" then
+                    table.insert(dirs, 1, new_path)
+                    explore(new_path)
+                elseif e.type == "file" then
+                    files[#files + 1] = new_path
+                end
+            end
+        end
+    end
+    --
+    explore(root)
+    --
+    for _, path in ipairs(files) do
+        local ok = uv.fs_unlink(path)
+        if not ok then
+            print("Could not delete file")
+        end
+    end
+    for _, path in ipairs(dirs) do
+        local ok = uv.fs_rmdir(path)
+        if not ok then
+            print("Could not delete folder")
+        end
+    end
+end
+
 -- sync
 function Fs:has_subdir(path)
     path = path:gsub("/$", "")
