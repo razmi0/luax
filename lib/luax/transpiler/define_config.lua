@@ -68,6 +68,7 @@ local function define_config(user_config)
             out_dir = "build",
             no_emit = false,
             target_file_extension = ".lua",
+            empty_out_dir = true
         },
         plugins              = {},
         alias                = {}
