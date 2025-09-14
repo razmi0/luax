@@ -1,15 +1,10 @@
 --
-local watcher         = require("lib.watcher.watch")
+local watcher = require("lib.watcher.watch")
 --
-local bundle_path     = "luajit lib/luax/_bundle.lua"
-local not_bundle_path = "luajit lib/luax/transpiler/main.lua --verbose"
-
-watcher.new({
-    paths = { "./src", "./lib/luax" },
+local cfg = {
+    paths = { "./src", "./lib", "./luaxconfig.lua" },
     recursive = true,
-    exec = not_bundle_path,
-    ignore = { "./lib/luax/_bundle.lua" }
-})
-    :on("start")
-    :on("change")
-    :run()
+    exec = "luajit lib/luax/transpiler/main.lua --verbose",
+    ignore = { "./dist/_app.lua" }
+}
+watcher.new(cfg):on("start"):on("change"):run()
