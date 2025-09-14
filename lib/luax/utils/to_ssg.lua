@@ -7,9 +7,8 @@ local Fs = require("lib.luax.utils.fs")
 ---@param config ToSSGConfig
 local function to_ssg(config)
     local fs = Fs.new()
-    local luax_app = require(config.entry_path) -- App
     local rendered =
-        "<!DOCTYPE html>" .. luax_app()
+        "<!DOCTYPE html>" .. require(config.entry_path)()
     if config.out_path then
         fs:write(config.out_path, rendered)
     end
