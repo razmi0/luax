@@ -69,6 +69,7 @@
 ---@field out_file string
 ---@field no_emit boolean
 ---@field target_file_extension string
+---@field empty_out_dir boolean
 
 ---@class PartialBuildOptions
 ---@field bundle boolean|nil
@@ -77,3 +78,4 @@
 ---@field out_dir string|nil
 ---@field no_emit boolean|nil
 ---@field target_file_extension string|nil
+---@field empty_out_dir boolean|nil
