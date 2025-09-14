@@ -82,20 +82,22 @@ local function build(config, on_source_file)
             end
             --
             if entry.type == "file" then
-                if not file_of_interest() then return end
-                --
-                local new_name = create_target_name()
-                local new_path = out_dir .. "/" .. new_name
-                --
-                local source_file = create_file(entry.name, src_path)
-                local transpiled_file = create_file(new_name, new_path, on_source_file(source_file))
-                if not transpiled_file.content then return end
-                update_stats(source_file)
-                if config.build.bundle then
-                    transpiled[transpiled_file.path] = transpiled_file.content -- store file in transpiled for later use
-                else
-                    fs:write(transpiled_file.path, transpiled_file.content)    -- create file in out_dir
+                if file_of_interest() then
+                    local new_name = create_target_name()
+                    local new_path = out_dir .. "/" .. new_name
+                    --
+                    local source_file = create_file(entry.name, src_path)
+                    local transpiled_file = create_file(new_name, new_path, on_source_file(source_file))
+                    if not transpiled_file.content then return end
+                    update_stats(source_file)
+                    if config.build.bundle then
+                        transpiled[transpiled_file.path] = transpiled_file
+                        .content                                                   -- store file in transpiled for later use
+                    else
+                        fs:write(transpiled_file.path, transpiled_file.content)    -- create file in out_dir
+                    end
                 end
+                --
             elseif entry.type == "directory" then
                 on_dir()
             end
