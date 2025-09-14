@@ -1,12 +1,12 @@
 --
-local uv                       = require("luv")
-local inspect                  = require("inspect")
-local normalize_path           = require("lib.luax.utils.normalize_path")
-local Logger                   = require("lib.luax.utils.logger")
+local uv             = require("luv")
+local inspect        = require("inspect")
+local normalize_path = require("lib.luax.utils.normalize_path")
+local Logger         = require("lib.luax.utils.logger")
 --
 
-local flags, globals, rm_paths = (function()
-    local flag_map, globals, rm_paths = {}, {}, {}
+local flags, globals = (function()
+    local flag_map, globals = {}, {}
     local on_flag_args = function(start, str, callback)
         local targets = {
             global = function(s)
@@ -27,21 +27,20 @@ local flags, globals, rm_paths = (function()
         end
     end
     for i = 1, #arg do
-        if arg[i]:match("^%-%-.-") then
-            flag_map[arg[i]] = true
+        local cur_arg = arg[i]
+        if cur_arg:match("^%-%-.-") then
+            flag_map[cur_arg] = true
         end
-        on_flag_args(i, arg[i], function(type, _arg)
+        on_flag_args(i, cur_arg, function(type, _arg)
             if type == "global" then
                 globals[_arg] = true
-            elseif type == "rm_src" then
-                rm_paths[#rm_paths + 1] = _arg
             end
         end)
     end
-    return flag_map, globals, rm_paths
+    return flag_map, globals
 end)()
 
-local _                        = Logger({
+local _              = Logger({
     suffix = ".lua",
     strip = nil, -- defaults to node.name..suffix
     action = "Bundling",
@@ -180,18 +179,6 @@ local function serialize(root, cbs)
     return contents
 end
 
-local function remove_src_files(modules)
-    for path, _ in pairs(modules.meta.paths.locals) do
-        for _, pattern in ipairs(rm_paths) do
-            if path:match(pattern) then
-                local fd = uv.fs_unlink(path)
-                if not fd then return end
-                uv.fs_unlink(path)
-            end
-        end
-    end
-end
-
 local function default_reader(path)
     local fd = uv.fs_open(path, "r", 438)
     if not fd then
@@ -282,7 +269,10 @@ local function bundle(config, injection)
             count = modules_counter,
             weight = to_K(modules_weight),
             meta = {
-                paths = { locals = module_paths, globals = globals }
+                paths = {
+                    locals = module_paths,
+                    globals = globals
+                }
             },
         }
     end
@@ -311,10 +301,6 @@ local function bundle(config, injection)
     _.log("body")
     _.log("footer", modules)
     --
-    --
-    if flags["--remove-source"] or flags["--R"] then
-        remove_src_files(modules)
-    end
 
     injection.writer(table.concat(module_buffer, ""), "w", config.out_file)
     uv.run()
