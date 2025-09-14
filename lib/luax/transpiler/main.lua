@@ -6,17 +6,16 @@
 --    (7) : no config first (done)
 
 --
-local transpile          = require("lib.luax.transpiler.transpile")
-local define_config      = require("lib.luax.transpiler.define_config")
-local CONFIG_MODULE_PATH = "lib.luax.luaxconfig"
+local transpile     = require("lib.luax.transpiler.transpile")
+local define_config = require("lib.luax.transpiler.define_config")
 --
 
 local _,
 ---@type PartialTranspilerConfig
-user_config              = xpcall(function()
-    return require(CONFIG_MODULE_PATH)
+user_config         = xpcall(function()
+    return require("luaxconfig")
 end, function()
-    print("\27[38;5;208mNo configuration file found : \27[0m" .. CONFIG_MODULE_PATH)
+    print("\27[38;5;208mNo configuration file found \27[0m")
 end)
 transpile(
     define_config(user_config or {})

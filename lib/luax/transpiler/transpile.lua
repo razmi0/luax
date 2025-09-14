@@ -25,12 +25,7 @@ local function transpile(config)
         function(file)
             --
             ---@type TranspilerContext
-            local ctx = {
-                file = file,
-                config = config,
-                emitted = {},
-                ast = {}
-            }
+            local ctx = { file = file, config = config, emitted = {}, ast = {} }
             --
             run_plugins("before_parse", ctx, config.plugins)
             parser(ctx) -- parsing (ctx.ast mutation)

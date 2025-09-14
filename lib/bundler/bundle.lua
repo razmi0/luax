@@ -1,11 +1,11 @@
 --
-local uv                              = require("luv")
-local inspect                         = require("inspect")
-local normalize_path                  = require("lib.luax.utils.normalize_path")
+local uv                       = require("luv")
+local inspect                  = require("inspect")
+local normalize_path           = require("lib.luax.utils.normalize_path")
 --
 
-local flags, globals, do_not_rm_paths = (function()
-    local flag_map, globals, do_not_rm_paths = {}, {}, {}
+local flags, globals, rm_paths = (function()
+    local flag_map, globals, rm_paths = {}, {}, {}
     local on_flag_args = function(start, str, callback)
         local targets = {
             global = function(s)
@@ -33,11 +33,11 @@ local flags, globals, do_not_rm_paths = (function()
             if type == "global" then
                 globals[_arg] = true
             elseif type == "rm_src" then
-                do_not_rm_paths[#do_not_rm_paths + 1] = _arg
+                rm_paths[#rm_paths + 1] = _arg
             end
         end)
     end
-    return flag_map, globals, do_not_rm_paths
+    return flag_map, globals, rm_paths
 end)()
 
 ---@class Module
@@ -172,7 +172,7 @@ end
 
 local function remove_src_files(modules)
     for path, _ in pairs(modules.meta.paths.locals) do
-        for _, pattern in ipairs(do_not_rm_paths) do
+        for _, pattern in ipairs(rm_paths) do
             if path:match(pattern) then
                 local fd = uv.fs_unlink(path)
                 if not fd then return end
@@ -193,14 +193,13 @@ local function logger()
         entries[#entries + 1] = function()
             local function trail()
                 if node.weight == 0 then return prefix end
-                return node.weight .. "ko"
+                return node.weight .. "K"
             end
             return
                 prefix ..
                 node.path:gsub(node.name .. ".lua", "") ..
                 "\27[38;5;250m" .. node.name .. ".lua" .. "\27[0m" ..
-                string.rep(".", max_cols - length) ..
-                " " .. trail()
+                string.rep(".", max_cols - length) .. " " .. trail()
         end
     end
 
@@ -213,7 +212,7 @@ local function logger()
                 print(fn())
             end
         elseif type == "footer" then
-            print("." .. string.rep(".", max_cols - (#tostring(mods.weight))) .. " " .. mods.weight .. "ko")
+            print(string.rep(".", max_cols - (#tostring(mods.weight))) .. " " .. mods.weight .. "K")
         end
     end
 
@@ -260,6 +259,7 @@ local function bundle(config, injection)
     --
     --
     --
+
     injection.reader = (injection and injection.reader) or default_reader
     injection.writer = (injection and injection.writer) or default_writer
     --
@@ -292,9 +292,7 @@ local function bundle(config, injection)
 
             local content, weight = injection.reader((path))
             local name = path:match("/([^./]+).lua$")
-            if not content then
-                return create_module(name, path)
-            end
+            if not content then return create_module(name, path) end
             local child_paths = get_requires(content)
 
             content = isolate_module(path, content)
@@ -353,6 +351,5 @@ local function bundle(config, injection)
     injection.writer(table.concat(module_buffer, ""), "w", config.out_file)
     uv.run()
 end
-
 
 return bundle
