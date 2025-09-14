@@ -1,8 +1,8 @@
 --
 local uv             = require("luv")
 local inspect        = require("inspect")
-local normalize_path = require("lib.luax.utils.normalize_path")
-local Logger         = require("lib.luax.utils.logger")
+local normalize_path = require("luax.utils.normalize_path")
+local Logger         = require("luax.utils.logger")
 --
 
 local flags, globals = (function()

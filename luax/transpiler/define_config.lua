@@ -1,5 +1,5 @@
-local deep_merge = require("lib.luax.utils.deep_merge")
-local sort_aliases = require("lib.luax.utils.sort_aliases")
+local deep_merge = require("luax.utils.deep_merge")
+local sort_aliases = require("luax.utils.sort_aliases")
 
 
 
@@ -59,7 +59,7 @@ local function define_config(user_config)
         },
         luax_file_extension  = ".luax",
         render_function_name = "__lx__",
-        render_function_path = "lib/luax/transpiler/render",
+        render_function_path = "luax/transpiler/render",
         root                 = "src",
         build                = {
             bundle = true,

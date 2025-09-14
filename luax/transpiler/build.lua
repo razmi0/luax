@@ -1,7 +1,7 @@
-local Fs = require("lib.luax.utils.fs")
-local bundle = require("lib.bundler.bundle")
-local normalize_path = require("lib.luax.utils.normalize_path")
-local Logger = require("lib.luax.utils.logger")
+local Fs = require("luax.utils.fs")
+local bundle = require("luax.bundler.bundle")
+local normalize_path = require("luax.utils.normalize_path")
+local Logger = require("luax.utils.logger")
 
 --- Handle the build process of luax files
 --- You can deactivate building step with config.build.no_emit in luaxconfig
@@ -92,9 +92,9 @@ local function build(config, on_source_file)
                     update_stats(source_file)
                     if config.build.bundle then
                         transpiled[transpiled_file.path] = transpiled_file
-                        .content                                                   -- store file in transpiled for later use
+                            .content                                            -- store file in transpiled for later use
                     else
-                        fs:write(transpiled_file.path, transpiled_file.content)    -- create file in out_dir
+                        fs:write(transpiled_file.path, transpiled_file.content) -- create file in out_dir
                     end
                 end
                 --

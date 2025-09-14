@@ -1,8 +1,8 @@
 local uv      = require("luv")
 local inspect = require("inspect")
-local parser  = require("lib.luax.transpiler.parser")
-local emitter = require("lib.luax.transpiler.emitter")
-local build   = require("lib.luax.transpiler.build")
+local parser  = require("luax.transpiler.parser")
+local emitter = require("luax.transpiler.emitter")
+local build   = require("luax.transpiler.build")
 
 
 

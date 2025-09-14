@@ -1,4 +1,4 @@
-local Fs = require("lib.luax.utils.fs")
+local Fs = require("luax.utils.fs")
 
 ---@class ToSSGConfig
 ---@field entry_path string

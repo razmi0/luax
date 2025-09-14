@@ -6,8 +6,8 @@
 --    (7) : no config first (done)
 
 --
-local transpile     = require("lib.luax.transpiler.transpile")
-local define_config = require("lib.luax.transpiler.define_config")
+local transpile     = require("luax.transpiler.transpile")
+local define_config = require("luax.transpiler.define_config")
 --
 
 local _,

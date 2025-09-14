@@ -1,6 +1,6 @@
-local luax_helpers  = require("lib.luax.transpiler.luax_helpers")
-local format_header = require("lib.luax.utils.format_header")
-local emit          = require("lib/luax/transpiler/emit")
+local luax_helpers  = require("luax.transpiler.luax_helpers")
+local format_header = require("luax.utils.format_header")
+local emit          = require("luax.transpiler.emit")
 
 
 
