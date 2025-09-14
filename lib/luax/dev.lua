@@ -8,3 +8,5 @@ local cfg = {
     ignore = { "./dist/_app.lua" }
 }
 watcher.new(cfg):on("start"):on("change"):run()
+
+print("hello")
