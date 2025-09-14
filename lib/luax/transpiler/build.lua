@@ -1,55 +1,25 @@
 local Fs = require("lib.luax.utils.fs")
 local bundle = require("lib.bundler.bundle")
 local normalize_path = require("lib.luax.utils.normalize_path")
+local Logger = require("lib.luax.utils.logger")
 
-local function logger(config)
-    local entries, max_cols = {}, 0
-
-    ---@param node {name : string, path : string, weight : number}
-    local function push(node)
-        local prefix = "- "
-        local length = #prefix + #node.path + #(".lua") + 1
-        if length > max_cols then max_cols = length end
-        entries[#entries + 1] = function()
-            local function trail()
-                if node.weight == 0 then return prefix end
-                return node.weight .. "K"
-            end
-            return
-                prefix ..
-                node.path:gsub(node.name, "") ..
-                "\27[38;5;250m" .. node.name .. "\27[0m" .. string.rep(".", max_cols - length) .. " " .. trail()
-        end
-    end
-
-    ---@param type "head"|"body"|"footer"
-    local function log(type, mods)
-        if type == "head" then
-            print("Transpiling " .. mods.count .. " modules from : " .. (config.root or "unknown"))
-        elseif type == "body" and (config.cmd.flags["--verbose"] or config.cmd.flags["--V"]) then
-            for _, fn in ipairs(entries) do
-                print(fn())
-            end
-        elseif type == "footer" then
-            print(string.rep(".", max_cols - (#tostring(mods.weight))) .. " " .. mods.weight .. "K")
-        end
-    end
-
-    return {
-        push = push,
-        log = log,
-    }
-end
-
-
---- Handle the build process of a luax project.
---- The callback "on_file" is called when a file is found.
---- If the callback returns a string[], the file is written to the build directory.
+--- Handle the build process of luax files
+--- You can deactivate building step with config.build.no_emit in luaxconfig
+--- The callback "on_source_file" is called when a file of interest is found ( see config.luax_file_extension ).
+--- If the bundler flag (config.build.bundle) is false, source files are emitted in the defined out_dir ( see config.build.out_dir ).
 ---@param config TranspilerConfig
 ---@param on_source_file fun(file : File): emitted: string[]| nil
 local function build(config, on_source_file)
     if config.build.no_emit then return end
-    local _ = logger(config)
+    --
+    local _ = Logger({
+        suffix = "",
+        strip = nil, -- defaults to node.name
+        action = "Transpiling",
+        source = function() return "from : " .. (config.root or "unknown") end,
+        flags = config.cmd.flags,
+    })
+    --
     local file_count, files_weight, fs, transpiled, to_K = 0, 0, Fs.new(), {}, function(a) return a / 1000 end
     local function update_stats(file)
         file_count = file_count + 1
@@ -131,7 +101,7 @@ local function build(config, on_source_file)
 
     _.log("head", { count = file_count })
     _.log("body")
-    _.log("footer", { weight = to_K(files_weight) })
+    _.log("footer", { weight = files_weight })
 
     if config.build.bundle then start_bundling() end
 end

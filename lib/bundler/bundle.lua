@@ -2,6 +2,7 @@
 local uv                       = require("luv")
 local inspect                  = require("inspect")
 local normalize_path           = require("lib.luax.utils.normalize_path")
+local Logger                   = require("lib.luax.utils.logger")
 --
 
 local flags, globals, rm_paths = (function()
@@ -39,6 +40,15 @@ local flags, globals, rm_paths = (function()
     end
     return flag_map, globals, rm_paths
 end)()
+
+local _                        = Logger({
+    suffix = ".lua",
+    strip = nil, -- defaults to node.name..suffix
+    action = "Bundling",
+    source = function(_, mods) return "at : " .. (mods.meta.target or "unknown") end,
+    flags = flags,
+})
+
 
 ---@class Module
 ---@field name string
@@ -182,46 +192,6 @@ local function remove_src_files(modules)
     end
 end
 
-local function logger()
-    local entries, max_cols = {}, 0
-
-    ---@param node {name : string, path : string, weight : number}
-    local function push(node)
-        local prefix = "- "
-        local length = #prefix + #node.path + #(".lua") + 1
-        if length > max_cols then max_cols = length end
-        entries[#entries + 1] = function()
-            local function trail()
-                if node.weight == 0 then return prefix end
-                return node.weight .. "K"
-            end
-            return
-                prefix ..
-                node.path:gsub(node.name .. ".lua", "") ..
-                "\27[38;5;250m" .. node.name .. ".lua" .. "\27[0m" ..
-                string.rep(".", max_cols - length) .. " " .. trail()
-        end
-    end
-
-    ---@param type "head"|"body"|"footer"
-    local function log(type, mods)
-        if type == "head" then
-            print("Bundling " .. mods.count .. " modules at : " .. (mods.meta.target or "unknown"))
-        elseif type == "body" and (flags["--verbose"] or flags["--V"]) then
-            for _, fn in ipairs(entries) do
-                print(fn())
-            end
-        elseif type == "footer" then
-            print(string.rep(".", max_cols - (#tostring(mods.weight))) .. " " .. mods.weight .. "K")
-        end
-    end
-
-    return {
-        push = push,
-        log = log,
-    }
-end
-
 local function default_reader(path)
     local fd = uv.fs_open(path, "r", 438)
     if not fd then
@@ -231,7 +201,7 @@ local function default_reader(path)
     local stat = assert(uv.fs_fstat(fd))
     local content = assert(uv.fs_read(fd, stat.size, 0))
     assert(uv.fs_close(fd))
-    return content, stat.size / 1000
+    return content, stat.size
 end
 
 local function default_writer(content, mode, output)
@@ -268,9 +238,7 @@ local function bundle(config, injection)
     ---@return Modules
     local function create_modules()
         --
-        local module_paths    = {}
-        local modules_counter = 0
-        local modules_weight  = 0
+        local module_paths, modules_counter, modules_weight, to_K = {}, 0, 0, function(a) return a / 1000 end
         ---@return Module
         local function create_module(n, p, ctn, weight, imports)
             local w = weight or 0
@@ -280,7 +248,7 @@ local function bundle(config, injection)
                 name = n,                -- underlying var
                 path = p,                -- underlying path
                 content = ctn or "",     -- file content
-                weight = w,              -- xxx ko
+                weight = to_K(w),        -- xxx ko
                 imports = imports or nil -- childs
             }
         end
@@ -312,7 +280,7 @@ local function bundle(config, injection)
         return {
             root = step(config.root) or {},
             count = modules_counter,
-            weight = modules_weight,
+            weight = to_K(modules_weight),
             meta = {
                 paths = { locals = module_paths, globals = globals }
             },
@@ -322,7 +290,7 @@ local function bundle(config, injection)
     --
     --
     local module_launcher  = "\nreturn __modules[\"" .. config.root .. "\"]()"
-    local _, modules       = logger(), create_modules()
+    local modules          = create_modules()
     local module_buffer    = serialize(modules.root, {
         visit_node = function(node)
             _.push(node)
