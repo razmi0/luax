@@ -8,7 +8,6 @@ local uv = require("luv")
 ---@param user_config PartialTranspilerConfig|nil
 ---@return TranspilerConfig
 local function define_config(user_config)
-    print(uv.cwd())
     local flags, globals, rm_paths = (function()
         local flag_map, globals, rm_paths = {}, {}, {}
         local on_flag_args = function(start, str, callback)
@@ -45,6 +44,23 @@ local function define_config(user_config)
         return flag_map, globals, rm_paths
     end)()
 
+    local function resolve_render_path(path)
+        local fd = uv.fs_open(path, "r", 438)
+        if fd then
+            uv.fs_close(fd)
+            return path
+        end
+
+        local filepath = package.searchpath(path, package.path)
+        if filepath then
+            return filepath
+        end
+
+        error("render.lua not found. Tried user path '" .. path .. "' and library path.")
+    end
+
+
+
     ---@type TranspilerConfig
     local defaults = {
         headers              = {
@@ -61,7 +77,7 @@ local function define_config(user_config)
         },
         luax_file_extension  = ".luax",
         render_function_name = "__lx__",
-        render_function_path = "/luax/render",
+        render_function_path = "luax.render",
         root                 = "src",
         build                = {
             bundle = true,
@@ -76,12 +92,13 @@ local function define_config(user_config)
         alias                = {}
     }
 
-    local defined_config = deep_merge(defaults, user_config)
+    local cfg = deep_merge(defaults, user_config)
 
     -- aliases are sorted by specificity (longer aliases)
     -- means more specificity (prevent aliases replacing each other)
-    defined_config.alias = sort_aliases(defined_config)
-    return defined_config
+    cfg.alias = sort_aliases(cfg)
+    cfg.render_function_path = resolve_render_path(cfg.render_function_path)
+    return cfg
 end
 
 return define_config
