@@ -15,7 +15,7 @@ local _,
 user_config         = xpcall(function()
     return require("luaxconfig")
 end, function()
-    print("\27[38;5;208mNo configuration file found \27[0m")
+    print("\27[38;5;208m[Warn]No configuration file found\27[0m : " .. "luaxconfig.lua")
 end)
 transpile(
     define_config(user_config or {})

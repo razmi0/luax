@@ -45,7 +45,10 @@ local function build(config, on_source_file)
         })
     end
     --
-    assert(fs:has_subdir(config.root), "No source directory found : " .. config.root)
+    if not fs:has_subdir(config.root) then
+        print("\27[38;5;208m[Warn]No source directory found\27[0m : " .. config.root)
+        return
+    end
     fs:create_dir(config.build.out_dir)
     --
     local function explore(root, out_dir)
