@@ -38,9 +38,7 @@ local function Logger(config)
 
     local body = function()
         local flags = config.flags or {}
-        if flags["--verbose"] or flags["--V"] then
-            for _, fn in ipairs(entries) do print(fn()) end
-        end
+        for _, fn in ipairs(entries) do print(fn()) end
     end
 
     local footer = function(mods)
@@ -53,11 +51,12 @@ local function Logger(config)
     end
     ---@param type "head"|"body"|"footer"
     local function log(type, mods)
+        local verbose = config.flags["--verbose"] or config.flags["-V"]
         if type == "head" then
             head(mods)
-        elseif type == "body" then
+        elseif type == "body" and verbose then
             body()
-        elseif type == "footer" then
+        elseif type == "footer" and verbose then
             footer(mods)
         end
     end
