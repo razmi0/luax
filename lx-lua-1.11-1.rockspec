@@ -1,5 +1,5 @@
 package = "lx-lua"
-version = "1.8-1"
+version = "1.11-1"
 source = {
    url = "git+https://github.com/razmi0/luax.git",
    branch = "main"
