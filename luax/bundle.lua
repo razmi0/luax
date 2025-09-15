@@ -210,8 +210,6 @@ end
 
 ---@params config TranspilerConfig["build"]
 ---@params injection Injection|nil
----@params root_path string
----@params out_path string
 local function bundle(config, injection)
     --
     --
