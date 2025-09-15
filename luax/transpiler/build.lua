@@ -33,9 +33,8 @@ local function build(config, on_source_file)
     end
 
     local start_bundling = function()
-        local render_function_path = normalize_path(config.render_function_path)
-        local render_function_content = fs:read(render_function_path)
-        transpiled[render_function_path] = render_function_content
+        local render_function_content = fs:read(config.render_function_path)
+        transpiled[config.render_function_path] = render_function_content
 
         bundle(config.build, {
             reader = function(path)
