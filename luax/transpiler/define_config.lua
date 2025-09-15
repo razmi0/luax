@@ -1,5 +1,6 @@
 local deep_merge = require("luax.utils.deep_merge")
 local sort_aliases = require("luax.utils.sort_aliases")
+local uv = require("luv")
 
 
 
@@ -7,6 +8,7 @@ local sort_aliases = require("luax.utils.sort_aliases")
 ---@param user_config PartialTranspilerConfig|nil
 ---@return TranspilerConfig
 local function define_config(user_config)
+    print(uv.cwd())
     local flags, globals, rm_paths = (function()
         local flag_map, globals, rm_paths = {}, {}, {}
         local on_flag_args = function(start, str, callback)
@@ -59,7 +61,7 @@ local function define_config(user_config)
         },
         luax_file_extension  = ".luax",
         render_function_name = "__lx__",
-        render_function_path = "luax/render",
+        render_function_path = "/luax/render",
         root                 = "src",
         build                = {
             bundle = true,

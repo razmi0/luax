@@ -10,14 +10,14 @@ local transpile     = require("luax.transpiler.transpile")
 local define_config = require("luax.transpiler.define_config")
 --
 
-local _,
----@type PartialTranspilerConfig
-user_config         = xpcall(function()
-    return require("luaxconfig")
-end, function()
-    print("\27[38;5;208m[Warn]No configuration file found\27[0m : " .. "luaxconfig.lua")
-end)
-transpile(
-    define_config(user_config or {})
-)
---
+---@return PartialTranspilerConfig
+local function load_config()
+    local ok, cfg = pcall(require, "luaxconfig")
+    if ok then
+        return cfg
+    end
+    print("\27[38;5;208m[Warn] No configuration file found\27[0m: luaxconfig.lua")
+    return {}
+end
+
+transpile(define_config(load_config()))

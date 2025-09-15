@@ -1,11 +1,11 @@
 package = "lx-lua"
-version = "1.6-1"
+version = "1.8-1"
 source = {
    url = "git+https://github.com/razmi0/luax.git",
    branch = "main"
 }
 description = {
-   summary = "Luax transpiler",
+   summary = "jsx in lua transpiler",
    detailed = "dev",
    homepage = "https://github.com/razmi0/luax",
    license = "MIT"
