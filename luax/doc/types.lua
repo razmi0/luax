@@ -1,4 +1,5 @@
 ---@class TranspilerConfig
+---@field base string
 ---@field headers HeaderTranspilerConfig
 ---@field luax_file_extension string
 ---@field build BuildOptions
@@ -7,26 +8,41 @@
 ---@field render_function_path string       -- path to the render function
 ---@field plugins TranspilerPlugin[]|nil    -- plugins array
 ---@field alias { [string] : string }| nil  -- require("<alias>...") across luax files
----@field cmd CmdOptions
 
----@class CmdOptions
----@field flags { [string] : boolean }
----@field globals string[]
----@field rm_paths string[]
+---@class Module
+---@field name string
+---@field path string
+---@field content string
+---@field weight integer
+---@field imports Module[]|nil
 
----@class PartialCmdOptions
----@field flags { [string] : boolean }|nil
----@field globals string[]|nil
----@field rm_paths string[]|nil
+---@class Modules
+---@field root Module
+---@field count integer
+---@field weight integer
+---@field meta { paths : { locals : table<string, true>, globals : table<string, true> } }
+
+
+---@alias Reader fun(path: string): string
+---@alias Writer fun(content: string, mode: "a"|"w", path: string): nil
+
+---@class Injection
+---@field reader Reader|nil
+---@field writer Writer|nil
+
+---@class BundlerConfig
+---@field in_file string
+---@field out_file string
+
 
 ---@class PartialTranspilerConfig
+---@field base string
 ---@field root string|nil
 ---@field build PartialBuildOptions
 ---@field render_function_name string|nil
 ---@field render_function_path string|nil
 ---@field plugins TranspilerPlugin[]|nil
 ---@field alias { [string] : string }|nil
----@field cmd PartialCmdOptions|nil
 
 ---@class HeaderTranspilerConfig
 ---@field enabled boolean
@@ -64,18 +80,20 @@
 
 ---@class BuildOptions
 ---@field bundle boolean
----@field root string
+---@field root_file string
 ---@field out_dir string
 ---@field out_file string
 ---@field no_emit boolean
 ---@field target_file_extension string
 ---@field empty_out_dir boolean
+---@field type "module"|string
 
 ---@class PartialBuildOptions
 ---@field bundle boolean|nil
----@field root string|nil
+---@field root_file string|nil
 ---@field out_file string|nil
 ---@field out_dir string|nil
 ---@field no_emit boolean|nil
 ---@field target_file_extension string|nil
 ---@field empty_out_dir boolean|nil
+---@field type "module"|string|nil
