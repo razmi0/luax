@@ -57,8 +57,7 @@ end
 function Watch:on(event, cb)
     if not event then return self end
     self.events[event] = function(err, filename)
-        if cb then cb() end
-        self:_spawn(err, filename)
+        self:_spawn(err, filename, cb)
     end
     return self
 end
@@ -69,7 +68,7 @@ function Watch:clear()
     end
 end
 
-function Watch:_spawn(err, filename)
+function Watch:_spawn(err, filename, cb)
     assert(not err, "\x1b[31mUnexpected Error\x1b[0m \n" .. inspect(self))
     local handle
 
@@ -102,6 +101,7 @@ function Watch:_spawn(err, filename)
 
         },
         function(code, signal) -- on exit
+            cb()
             if code == 0 then
                 log("Process exited code " .. code)
             end
@@ -199,7 +199,6 @@ function Watch:run()
             end
         )
     end
-
     uv.run()
 end
 
