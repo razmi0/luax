@@ -5,93 +5,35 @@ local normalize_path = require("luax.utils.normalize_path")
 local Logger         = require("luax.utils.logger")
 --
 
-local flags, globals = (function()
-    local flag_map, globals = {}, {}
-    local on_flag_args = function(start, str, callback)
-        local targets = {
-            global = function(s)
-                return s:match("^%-%-globals?") or s:match("^%-%-G")
-            end,
-            rm_src = function(s)
-                return s:match("^%-%-remove%-source") or s:match("^%-%-R")
-            end
-        }
-        for k, fn in pairs(targets) do
-            if fn(str) then
-                for j = start + 1, #arg do
-                    if not arg[j] then return j end
-                    if arg[j]:match("^%-%-") then return j end
-                    callback(k, arg[j])
-                end
-            end
-        end
-    end
-    for i = 1, #arg do
-        local cur_arg = arg[i]
-        if cur_arg:match("^%-%-.-") then
-            flag_map[cur_arg] = true
-        end
-        on_flag_args(i, cur_arg, function(type, _arg)
-            if type == "global" then
-                globals[_arg] = true
-            end
-        end)
-    end
-    return flag_map, globals
-end)()
-
 local _              = Logger({
     suffix = ".lua",
     strip = nil, -- defaults to node.name..suffix
     action = "Bundling",
     source = function(_, mods) return "at : " .. (mods.meta.target or "unknown") end,
-    flags = flags,
 })
 
 
----@class Module
----@field name string
----@field path string
----@field content string
----@field weight integer
----@field imports Module[]|nil
-
----@class Modules
----@field root Module
----@field count integer
----@field weight integer
----@field meta { paths : { locals : table<string, true>, globals : table<string, true> } }
 
 local function require_interceptor()
-    local keys = {}
-    for k, _ in pairs(globals) do
-        keys[#keys + 1] = k
-    end
     return table.concat({
-        "local __modules, __cache, globals  = {}, {}," .. inspect(keys),
+        "local __modules, __cache = {}, {}",
         "local function __require(name)",
-        "if __cache[name] then",
-        "return __cache[name]",
-        "end",
-        "local found = false",
-        "local fn = __modules[name]",
-        "   if not fn then",
-        "       found = false",
-        "       for _, fruit in ipairs(globals) do ",
-        "           if fruit == name then",
-        "               found = true",
-        "print('true')",
-        "               break",
-        "           end",
-        "       end",
-        "if found == true then fn = require(name) else ",
-        "error(\"Module not found: \" .. name )",
-        "end",
-        "end",
-        "local res = fn()",
-        "__cache[name] = res",
-        "return res",
-        "end "
+        "    if __cache[name] then",
+        "        return __cache[name]",
+        "    end",
+        "    local fn = __modules[name]",
+        "    if not fn then",
+        "        local ok, external_fn = pcall(require, name)",
+        "        if not ok then",
+        "            error(\"\27[38;5;196m[Error]External library not found\27[0m : \" .. name)",
+        "        end",
+        "        __cache[name] = external_fn",
+        "        return external_fn",
+        "    end",
+        "    local res = fn()",
+        "    __cache[name] = res",
+        "    return res",
+        "end"
     }, " ")
 end
 --
@@ -100,21 +42,8 @@ local function get_requires(_content)
     local lines = {}
     local all_matches = {}
 
-    local function get_info(line)
+    local function read_require(line)
         return line:match("^%s*local%s+([%w_]+)%s*=%s*require%s*%([\"\'](.+)[\"\']%)%s*$")
-    end
-
-    local top_level_requires       = {}
-    local top_level_requires_cache = {}
-    local function evaluate_require(_path, _name)
-        if globals[_path] then
-            if not top_level_requires_cache[_name] then
-                top_level_requires[#top_level_requires + 1] = "local " ..
-                    _name .. " = require(\"" .. _path .. "\")"
-                top_level_requires_cache[_name] = true
-            end
-            return true
-        end
     end
 
     local function add_match(_path)
@@ -126,12 +55,9 @@ local function get_requires(_content)
     for line in _content:gmatch("[^\r\n]+") do
         local forbid = false
         lines[#lines + 1] = line
-        local name, path = get_info(line)
-        if path then
-            forbid = evaluate_require(path, name)
-            if not forbid then
-                add_match(path)
-            end
+        local name, path = read_require(line)
+        if path and name then
+            add_match(path)
         end
     end
     return all_matches
@@ -145,12 +71,7 @@ local function isolate_module(path, content)
     -- replacing require by __module reference
     content = content:gsub("%s*local%s+([%w_]+)%s*=%s*require%s*%(?['\"]([%w%._/-]+)['\"]%)?",
         function(var, p)
-            if globals[p] then
-                -- external lib ( out of __modules : require)
-                return "\nlocal " .. var .. " = require(\"" .. p .. "\")" -- sans .lua
-            end
-            -- local lib ( out of __modules : __require)
-            return "\nlocal " .. var .. " = __require(\"" .. normalize_path(p) .. "\")" -- avec . sans .lua
+            return "\nlocal " .. var .. " = __require(\"" .. normalize_path(p) .. "\")"
         end
     )
 
@@ -197,17 +118,6 @@ local function default_writer(content, mode, output)
     assert(uv.fs_close(fd))
 end
 
----@alias Reader fun(path: string): string
----@alias Writer fun(content: string, mode: "a"|"w", path: string): nil
-
----@class Injection
----@field reader Reader|nil
----@field writer Writer|nil
-
----@class BundlerConfig
----@field in_file string
----@field out_file string
-
 ---@params config TranspilerConfig["build"]
 ---@params injection Injection|nil
 local function bundle(config, injection)
@@ -215,6 +125,7 @@ local function bundle(config, injection)
     --
     --
 
+    injection = injection or {}
     injection.reader = (injection and injection.reader) or default_reader
     injection.writer = (injection and injection.writer) or default_writer
     --
@@ -224,6 +135,7 @@ local function bundle(config, injection)
     local function create_modules()
         --
         local module_paths, modules_counter, modules_weight, to_K = {}, 0, 0, function(a) return a / 1000 end
+
         ---@return Module
         local function create_module(n, p, ctn, weight, imports)
             local w = weight or 0
@@ -243,8 +155,8 @@ local function bundle(config, injection)
             if module_paths[path] then return nil end
             module_paths[path] = true
 
-            local content, weight = injection.reader((path))
-            local name = path:match("/([^./]+).lua$")
+            local content, weight = injection.reader(path)
+            local name = path:match("/?([^./]+).lua$")
             if not content then return create_module(name, path) end
             local child_paths = get_requires(content)
 
@@ -263,13 +175,12 @@ local function bundle(config, injection)
         end
 
         return {
-            root = step(config.root) or {},
+            root = step(config.root_file) or {},
             count = modules_counter,
             weight = to_K(modules_weight),
             meta = {
                 paths = {
                     locals = module_paths,
-                    globals = globals
                 }
             },
         }
@@ -277,7 +188,8 @@ local function bundle(config, injection)
     --
     --
     --
-    local module_launcher  = "\nreturn __modules[\"" .. config.root .. "\"]()"
+    local module_launcher = "\nreturn __modules[\"" .. normalize_path(config.root_file) .. "\"]()()"
+    if config.type == "module" then module_launcher = module_launcher:gsub("%(%)$", "") end
     local modules          = create_modules()
     local module_buffer    = serialize(modules.root, {
         visit_node = function(node)
