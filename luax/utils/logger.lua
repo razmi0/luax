@@ -1,6 +1,13 @@
 -- logger.lua
 local function Logger(config)
     local entries, max_cols = {}, 0
+    local verbose = false
+
+    for _, str in ipairs(arg) do
+        if str == "--verbose" or str == "-V" then
+            verbose = true
+        end
+    end
 
     ---@param node {name : string, path : string, weight : number}
     local function push(node)
@@ -37,7 +44,6 @@ local function Logger(config)
     end
 
     local body = function()
-        local flags = config.flags or {}
         for _, fn in ipairs(entries) do print(fn()) end
     end
 
@@ -49,9 +55,9 @@ local function Logger(config)
         )
         )
     end
+
     ---@param type "head"|"body"|"footer"
     local function log(type, mods)
-        local verbose = config.flags["--verbose"] or config.flags["-V"]
         if type == "head" then
             head(mods)
         elseif type == "body" and verbose then
