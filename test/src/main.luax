@@ -1,0 +1,9 @@
+local App = require("@/App")
+function main()
+local items = {"What", "Where"}
+
+return <>
+<h1>Hello hooo</h1><App></App>
+</>
+end
+return main
