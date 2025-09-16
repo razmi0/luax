@@ -13,7 +13,7 @@ local function build(config, on_source_file)
     if config.build.no_emit then return end
     local file_count, files_weight, fs, transpiled, to_K = 0, 0, Fs.new(), {}, function(a) return a / 1000 end
     if config.build.empty_out_dir then
-        fs:clear("/" .. config.build.out_dir)
+        fs:clear(config.build.out_dir)
     end
 
     --
@@ -22,7 +22,6 @@ local function build(config, on_source_file)
         strip = nil, -- defaults to node.name
         action = "Transpiling",
         source = function() return "from : " .. (config.root or "unknown") end,
-        flags = config.cmd.flags,
     })
     --
 
@@ -33,8 +32,16 @@ local function build(config, on_source_file)
     end
 
     local start_bundling = function()
-        local render_function_content = fs:read(config.render_function_path)
-        transpiled[config.render_function_path] = render_function_content
+        local path_as_module = normalize_path(config.render_function_path)
+        local path_as_file = path_as_module
+        if not path_as_module:match("%.lua$") then
+            path_as_file = path_as_module .. ".lua"
+        end
+        local render_function_content = fs:read(path_as_file)
+        if not render_function_content then
+            print("\27[38;5;196m[Error]No render function found\27[0m : " .. path_as_file)
+        end
+        transpiled[path_as_module] = render_function_content
 
         bundle(config.build, {
             reader = function(path)
