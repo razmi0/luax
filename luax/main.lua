@@ -20,4 +20,8 @@ local function load_config()
     return {}
 end
 
-transpile(define_config(load_config()))
+local main = function()
+    transpile(define_config(load_config()))
+end
+
+return main
