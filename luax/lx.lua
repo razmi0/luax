@@ -812,16 +812,16 @@ local function build(config, on_source_file)
     end
 
     local start_bundling = function()
-        local path_as_module = normalize_path(config.render_function_path)
-        local path_as_file = path_as_module
-        if not path_as_module:match("%.lua$") then
-            path_as_file = path_as_module .. ".lua"
-        end
-        local render_function_content = fs:read(path_as_file)
-        if not render_function_content then
-            print("\27[38;5;196m[Error]No render function found\27[0m : " .. path_as_file)
-        end
-        transpiled[path_as_module] = render_function_content
+        -- local path_as_module = normalize_path(config.render_function_path)
+        -- local path_as_file = path_as_module
+        -- if not path_as_module:match("%.lua$") then
+        --     path_as_file = path_as_module .. ".lua"
+        -- end
+        -- local render_function_content = fs:read(path_as_file)
+        -- if not render_function_content then
+        --     print("\27[38;5;196m[Error]No render function found\27[0m : " .. path_as_file)
+        -- end
+        -- transpiled[path_as_module] = render_function_content
 
         bundle(config.build, {
             reader = function(path)
@@ -1043,9 +1043,10 @@ local function define_config(user_config)
 
     local cfg = deep_merge(defaults, user_config)
 
+    local _base = cfg.base  -- uv.cwd() .. "/" ..
 
-    cfg.build.out_dir = cfg.base .. "/" .. cfg.build.out_dir
-    cfg.root = cfg.base .. "/" .. cfg.root
+    cfg.build.out_dir = _base .. "/" .. cfg.build.out_dir
+    cfg.root = _base .. "/" .. cfg.root
     cfg.build.root_file = cfg.build.out_dir .. "/" .. cfg.build.root_file
     cfg.build.out_file = cfg.build.out_dir .. "/" .. cfg.build.out_file
 

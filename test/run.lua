@@ -1,6 +1,5 @@
 --
 local watcher = require("luax.watcher.watch")
-local to_ssg = require("luax.utils.to_ssg")
 --
 local cfg = {
     paths = { "./test", "./luaxconfig.lua" },
@@ -9,7 +8,11 @@ local cfg = {
     ignore = { "_app.lua" }
 }
 
-local html = function()
-    print(require("test.build._app")())
-end
-watcher.new(cfg):on("start", html):on("change", html):run()
+watcher.new(cfg)
+    :on("start", function()
+        print(require("test.build._app"))
+    end)
+    :on("change", function()
+        print(require("test.build._app"))
+    end)
+    :run()

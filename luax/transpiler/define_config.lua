@@ -53,9 +53,10 @@ local function define_config(user_config)
 
     local cfg = deep_merge(defaults, user_config)
 
+    local _base = cfg.base  -- uv.cwd() .. "/" ..
 
-    cfg.build.out_dir = cfg.base .. "/" .. cfg.build.out_dir
-    cfg.root = cfg.base .. "/" .. cfg.root
+    cfg.build.out_dir = _base .. "/" .. cfg.build.out_dir
+    cfg.root = _base .. "/" .. cfg.root
     cfg.build.root_file = cfg.build.out_dir .. "/" .. cfg.build.root_file
     cfg.build.out_file = cfg.build.out_dir .. "/" .. cfg.build.out_file
 

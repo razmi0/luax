@@ -101,7 +101,7 @@ function Watch:_spawn(err, filename, cb)
 
         },
         function(code, signal) -- on exit
-            cb()
+            if cb then cb(code) end
             if code == 0 then
                 log("Process exited code " .. code)
             end
