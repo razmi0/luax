@@ -1,9 +1,11 @@
-local App = require("@/App")
-function main()
-local items = {"What", "Where"}
+local List = require("@/List")
 
-return <>
-<h1>Hello hooo</h1><App></App>
-</>
+function main()
+    local items = {"aaaaaa", "bbbbbb"}
+    return <>
+        <h1>Titel 1</h1>
+        <List list={items}></List>
+    </>
 end
+
 return main

@@ -1,0 +1,6 @@
+function List(props)
+    return <ul>
+            {map(props.list, function(item) return <li>{item}</li> end)}
+        </ul>
+end
+return List
